@@ -87,6 +87,15 @@ export default function VillageOfficerDashboard({ navigation }) {
           <Text style={styles.nicButtonText}>Fill NIC Form</Text>
         </Pressable>
 
+        <Pressable
+          style={styles.reportButton}
+          onPress={() => navigation.navigate("DeathReport", { report: null, fresh: Date.now() })}
+          accessibilityRole="button"
+        >
+          <Ionicons name="add-circle-outline" size={18} color={COLORS.WHITE} />
+          <Text style={styles.reportButtonText}>Report a Death</Text>
+        </Pressable>
+
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Certificates</Text>
           <View style={styles.metaPill}>
@@ -98,7 +107,7 @@ export default function VillageOfficerDashboard({ navigation }) {
           <Pressable
             key={item.id}
             style={styles.recordCard}
-            onPress={() => openCertificates(item.type)}
+            onPress={() => navigation.navigate("VillageCertificateDetail", { certificateId: item.id })}
             accessibilityRole="button"
           >
             <View style={styles.iconCircle}>
@@ -254,6 +263,21 @@ const styles = StyleSheet.create({
   },
   nicButtonText: {
     color: COLORS.PRIMARY_NAVY,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  reportButton: {
+    marginTop: 12,
+    minHeight: 50,
+    borderRadius: 12,
+    backgroundColor: COLORS.PRIMARY_NAVY,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  reportButtonText: {
+    color: COLORS.WHITE,
     fontSize: 15,
     fontWeight: "700",
   },

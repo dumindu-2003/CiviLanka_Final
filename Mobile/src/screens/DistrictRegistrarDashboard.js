@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -10,7 +10,8 @@ import {
   DEATH_REGISTRATIONS,
   DEATH_STATS,
 } from "../constants/districtRegistrations";
-import { clearAuthToken } from "../services/api";
+import { useFocusEffect } from "@react-navigation/native";
+import { clearAuthToken, getNicApplications } from "../services/api";
 import DistrictRegistrarSidebar from "../components/DistrictRegistrarSidebar";
 
 const AREAS = {
@@ -32,10 +33,54 @@ const AREAS = {
   },
 };
 
-export default function DistrictRegistrarDashboard({ navigation }) {
+export default function DistrictRegistrarDashboard({ navigation, route }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [area, setArea] = useState("birth");
+  const [area, setArea] = useState(route.params?.area || "birth");
+  const [applications, setApplications] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const selected = AREAS[area];
+
+  useEffect(() => {
+    if (route.params?.area) {
+      setArea(route.params.area);
+    }
+  }, [route.params?.area]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (area !== "nic") {
+        return undefined;
+      }
+
+      let active = true;
+      setIsLoading(true);
+      getNicApplications()
+        .then((items) => {
+          if (!active) {
+            return;
+          }
+          setApplications(items);
+          setLoadError("");
+        })
+        .catch((error) => {
+          if (!active) {
+            return;
+          }
+          setApplications([]);
+          setLoadError(error.message);
+        })
+        .finally(() => {
+          if (active) {
+            setIsLoading(false);
+          }
+        });
+
+      return () => {
+        active = false;
+      };
+    }, [area])
+  );
 
   return (
     <View style={styles.screen}>
@@ -92,10 +137,26 @@ export default function DistrictRegistrarDashboard({ navigation }) {
           >
             <Text style={[styles.switchText, area === "death" && styles.switchTextActive]}>Death</Text>
           </Pressable>
+          <Pressable
+            style={[styles.switchButton, area === "nic" && styles.switchButtonActive]}
+            onPress={() => setArea("nic")}
+            accessibilityRole="button"
+            accessibilityState={{ selected: area === "nic" }}
+          >
+            <Text style={[styles.switchText, area === "nic" && styles.switchTextActive]}>NIC</Text>
+          </Pressable>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {area === "nic" ? (
+          <NicApplications
+            applications={applications}
+            isLoading={isLoading}
+            loadError={loadError}
+            onView={(application) => navigation.navigate("NicApplicationDetail", { application })}
+          />
+        ) : (
         <RegistrationSection
           title={selected.title}
           subtitle={selected.subtitle}
@@ -109,9 +170,75 @@ export default function DistrictRegistrarDashboard({ navigation }) {
             navigation.navigate("DistrictRegistrationDetail", { registrationId })
           }
         />
+        )}
       </ScrollView>
     </View>
   );
+}
+
+function NicApplications({ applications, isLoading, loadError, onView }) {
+  return (
+    <View style={styles.section}>
+      <View style={styles.welcomeCard}>
+        <Text style={styles.welcome}>NIC Applications</Text>
+        <Text style={styles.subtitle}>Submitted by village officers for review</Text>
+      </View>
+
+      {isLoading ? <Text style={styles.emptyText}>Loading applications...</Text> : null}
+      {loadError ? <Text style={styles.emptyText}>{loadError}</Text> : null}
+      {!isLoading && !loadError && applications.length === 0 ? (
+        <Text style={styles.emptyText}>No NIC applications are waiting for review.</Text>
+      ) : null}
+
+      {applications.map((item) => {
+        const approved = item.statusCode === "approved";
+        return (
+        <View key={item.id} style={styles.recordCard}>
+          <View style={styles.recordTop}>
+            <Text style={styles.recordId}>{item.applicationReference}</Text>
+            <View style={[styles.status, approved ? styles.statusApproved : styles.statusPending]}>
+              <Text
+                style={[
+                  styles.statusText,
+                  approved ? styles.statusTextApproved : styles.statusTextPending,
+                ]}
+              >
+                {approved ? "Approved" : "Pending"}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.recordName}>{item.fullName}</Text>
+          <View style={styles.dateRow}>
+            <Ionicons name="location-outline" size={14} color={COLORS.MUTED_TEXT} />
+            <Text style={styles.date}>{item.district}</Text>
+          </View>
+          <View style={styles.dateRow}>
+            <Ionicons name="calendar-outline" size={14} color={COLORS.MUTED_TEXT} />
+            <Text style={styles.date}>{formatSubmitted(item.submittedAt)}</Text>
+          </View>
+          <Pressable
+            style={styles.viewButton}
+            onPress={() => onView(item)}
+            accessibilityRole="button"
+          >
+            <Text style={styles.viewButtonText}>View</Text>
+          </Pressable>
+        </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function formatSubmitted(value) {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return date.toLocaleString();
 }
 
 function RegistrationSection({
@@ -278,6 +405,12 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 8,
+  },
+  emptyText: {
+    marginTop: 16,
+    color: COLORS.MUTED_TEXT,
+    fontSize: 14,
+    lineHeight: 20,
   },
   welcomeCard: {
     backgroundColor: COLORS.WHITE,

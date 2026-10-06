@@ -5,6 +5,8 @@ const connectDatabase = require("./config/database");
 const healthRoutes = require("./routes/healthRoutes");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
+const nicFormRoutes = require("./routes/nicFormRoutes");
+const deathReportRoutes = require("./routes/deathReportRoutes");
 
 dotenv.config();
 
@@ -17,6 +19,8 @@ app.use(express.json());
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/nic-forms", nicFormRoutes);
+app.use("/api/death-reports", deathReportRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

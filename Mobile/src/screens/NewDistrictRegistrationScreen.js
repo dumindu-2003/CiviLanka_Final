@@ -18,7 +18,7 @@ export default function NewDistrictRegistrationScreen({ navigation, route }) {
             style={styles.backButton}
             accessibilityLabel="Go back"
           >
-            <Ionicons name="arrow-back" size={22} color={COLORS.WHITE} />
+            <Ionicons name="chevron-back" size={28} color={COLORS.WHITE} />
           </Pressable>
           <Text style={styles.headerTitle}>New Registration</Text>
           <View style={styles.backButton} />
