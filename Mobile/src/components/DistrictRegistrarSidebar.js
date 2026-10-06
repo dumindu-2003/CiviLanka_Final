@@ -35,6 +35,18 @@ const MENU_ITEMS = [
     target: "DistrictCertificateList",
     params: { kind: "death" },
   },
+  {
+    key: "nic",
+    label: "NIC Applications",
+    icon: "card-outline",
+    target: "DistrictNicApplications",
+  },
+  {
+    key: "death-reports",
+    label: "Death Reports",
+    icon: "list-outline",
+    target: "DistrictDeathReports",
+  },
   { key: "news", label: "News", icon: "newspaper-outline", target: "News" },
   {
     key: "notification",

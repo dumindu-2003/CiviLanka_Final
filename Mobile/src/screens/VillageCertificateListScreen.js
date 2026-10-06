@@ -19,7 +19,7 @@ export default function VillageCertificateListScreen({ navigation, route }) {
             style={styles.backButton}
             accessibilityLabel="Go back"
           >
-            <Ionicons name="arrow-back" size={22} color={COLORS.WHITE} />
+            <Ionicons name="chevron-back" size={28} color={COLORS.WHITE} />
           </Pressable>
           <Text style={styles.headerTitle}>{certificateListTitle(certificateType)}</Text>
           <View style={styles.backButton} />
@@ -27,8 +27,16 @@ export default function VillageCertificateListScreen({ navigation, route }) {
         <View style={styles.headerAccent} />
       </View>
       <ScrollView contentContainerStyle={styles.content}>
+        {records.length === 0 ? (
+          <Text style={styles.empty}>No certificates are available for this list.</Text>
+        ) : null}
         {records.map((item) => (
-          <View key={item.id} style={styles.card}>
+          <Pressable
+            key={item.id}
+            style={styles.card}
+            onPress={() => navigation.navigate("VillageCertificateDetail", { certificateId: item.id })}
+            accessibilityRole="button"
+          >
             <View style={styles.iconCircle}>
               <Ionicons name={item.icon} size={16} color={COLORS.PRIMARY_NAVY} />
             </View>
@@ -54,7 +62,7 @@ export default function VillageCertificateListScreen({ navigation, route }) {
                 {item.status}
               </Text>
             </View>
-          </View>
+          </Pressable>
         ))}
       </ScrollView>
     </View>
@@ -95,6 +103,12 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    paddingBottom: 32,
+  },
+  empty: {
+    color: COLORS.MUTED_TEXT,
+    fontSize: 14,
+    lineHeight: 20,
   },
   card: {
     backgroundColor: COLORS.WHITE,

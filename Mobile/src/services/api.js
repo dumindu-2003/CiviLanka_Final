@@ -120,6 +120,95 @@ export async function getCurrentUser() {
   }
 }
 
+export async function saveNicForm(details) {
+  try {
+    const response = await apiClient.post("/nic-forms", details);
+    return response.data.form;
+  } catch (error) {
+    const apiError = readApiError(error, "Could not save the NIC form.");
+    apiError.fields = error.response?.data?.errors;
+    throw apiError;
+  }
+}
+
+export async function getNicApplications() {
+  try {
+    const response = await apiClient.get("/nic-forms");
+    return response.data.applications || [];
+  } catch (error) {
+    throw readApiError(error, "Could not load NIC applications.");
+  }
+}
+
+export async function approveNicApplication(id) {
+  try {
+    const response = await apiClient.post(`/nic-forms/${id}/approve`);
+    return response.data.application;
+  } catch (error) {
+    throw readApiError(error, "Could not approve the NIC application.");
+  }
+}
+
+export async function authorizeNicForm(id, credentials) {
+  try {
+    const response = await apiClient.post(`/nic-forms/${id}/authorize`, credentials);
+    return response.data.receipt;
+  } catch (error) {
+    const apiError = readApiError(error, "Could not authorize the application.");
+    apiError.fields = error.response?.data?.errors;
+    throw apiError;
+  }
+}
+
+export async function submitDeathReport(details) {
+  try {
+    const response = await apiClient.post("/death-reports", details);
+    return response.data.report;
+  } catch (error) {
+    const apiError = readApiError(error, "Could not send the death report.");
+    apiError.fields = error.response?.data?.errors;
+    throw apiError;
+  }
+}
+
+export async function getIncomingDeathReports() {
+  try {
+    const response = await apiClient.get("/death-reports/incoming");
+    return response.data.reports || [];
+  } catch (error) {
+    throw readApiError(error, "Could not load death reports.");
+  }
+}
+
+export async function updateDeathReport(id, details) {
+  try {
+    const response = await apiClient.patch(`/death-reports/${id}`, details);
+    return response.data.report;
+  } catch (error) {
+    const apiError = readApiError(error, "Could not update the death report.");
+    apiError.fields = error.response?.data?.errors;
+    throw apiError;
+  }
+}
+
+export async function approveDeathReport(id) {
+  try {
+    const response = await apiClient.post(`/death-reports/${id}/approve`);
+    return response.data.report;
+  } catch (error) {
+    throw readApiError(error, "Could not approve the death report.");
+  }
+}
+
+export async function getMyDeathReports() {
+  try {
+    const response = await apiClient.get("/death-reports");
+    return response.data.reports || [];
+  } catch (error) {
+    throw readApiError(error, "Could not load death reports.");
+  }
+}
+
 export async function createUser(account) {
   try {
     const response = await apiClient.post("/users", account);

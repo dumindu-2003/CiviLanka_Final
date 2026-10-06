@@ -35,6 +35,18 @@ const MENU_ITEMS = [
     icon: "id-card-outline",
     target: "NicForm",
   },
+  {
+    key: "death-report",
+    label: "Report a Death",
+    icon: "add-circle-outline",
+    target: "DeathReport",
+  },
+  {
+    key: "death-reports",
+    label: "Death Reports",
+    icon: "list-outline",
+    target: "DeathReportList",
+  },
   { key: "news", label: "News", icon: "newspaper-outline", target: "News" },
   {
     key: "notification",
@@ -96,9 +108,12 @@ export default function VillageOfficerSidebar({ visible, onClose, onNavigate, on
   function openItem(item) {
     animateClose(() => {
       onClose();
-      if (item.target !== "Home") {
-        onNavigate(item.target, item.params);
+      if (item.target === "Home") {
+        return;
       }
+      const params =
+        item.key === "death-report" ? { report: null, fresh: Date.now() } : item.params;
+      onNavigate(item.target, params);
     });
   }
 

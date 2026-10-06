@@ -11,7 +11,7 @@ export default function NewMarriageRegistrationScreen({ navigation }) {
       <View style={styles.header}>
         <SafeAreaView edges={["top"]} style={styles.headerSafe}>
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={22} color={COLORS.WHITE} />
+            <Ionicons name="chevron-back" size={28} color={COLORS.WHITE} />
           </Pressable>
           <Text style={styles.headerTitle}>New Registration</Text>
           <View style={styles.backButton} />

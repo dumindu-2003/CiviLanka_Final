@@ -9,9 +9,21 @@ import VillageOfficerTabs from "./VillageOfficerTabs";
 import DistrictRegistrarTabs from "./DistrictRegistrarTabs";
 import DistrictCertificateListScreen from "../screens/DistrictCertificateListScreen";
 import DistrictRegistrationDetailScreen from "../screens/DistrictRegistrationDetailScreen";
+import NicApplicationDetailScreen from "../screens/NicApplicationDetailScreen";
+import DistrictNicApplicationsScreen from "../screens/DistrictNicApplicationsScreen";
+import DistrictDeathReportsScreen from "../screens/DistrictDeathReportsScreen";
+import DistrictDeathReportDetailScreen from "../screens/DistrictDeathReportDetailScreen";
 import NewDistrictRegistrationScreen from "../screens/NewDistrictRegistrationScreen";
 import VillageCertificateListScreen from "../screens/VillageCertificateListScreen";
+import VillageCertificateDetailScreen from "../screens/VillageCertificateDetailScreen";
+import DeathReportScreen from "../screens/DeathReportScreen";
+import DeathReportSentScreen from "../screens/DeathReportSentScreen";
+import DeathReportListScreen from "../screens/DeathReportListScreen";
 import NicFormScreen from "../screens/NicFormScreen";
+import NicFormContactScreen from "../screens/NicFormContactScreen";
+import NicFormDocumentsScreen from "../screens/NicFormDocumentsScreen";
+import NicFormDeclarationScreen from "../screens/NicFormDeclarationScreen";
+import NicFormReceiptScreen from "../screens/NicFormReceiptScreen";
 import MarriageCertificateListScreen from "../screens/MarriageCertificateListScreen";
 import MarriageRegistrationDetailScreen from "../screens/MarriageRegistrationDetailScreen";
 import NewMarriageRegistrationScreen from "../screens/NewMarriageRegistrationScreen";
@@ -34,9 +46,21 @@ export default function AppNavigator() {
       <Stack.Screen name="DistrictRegistrar" component={DistrictRegistrarTabs} />
       <Stack.Screen name="DistrictCertificateList" component={DistrictCertificateListScreen} />
       <Stack.Screen name="DistrictRegistrationDetail" component={DistrictRegistrationDetailScreen} />
+      <Stack.Screen name="NicApplicationDetail" component={NicApplicationDetailScreen} />
+      <Stack.Screen name="DistrictNicApplications" component={DistrictNicApplicationsScreen} />
+      <Stack.Screen name="DistrictDeathReports" component={DistrictDeathReportsScreen} />
+      <Stack.Screen name="DistrictDeathReportDetail" component={DistrictDeathReportDetailScreen} />
       <Stack.Screen name="NewDistrictRegistration" component={NewDistrictRegistrationScreen} />
       <Stack.Screen name="VillageCertificateList" component={VillageCertificateListScreen} />
+      <Stack.Screen name="VillageCertificateDetail" component={VillageCertificateDetailScreen} />
+      <Stack.Screen name="DeathReport" component={DeathReportScreen} />
+      <Stack.Screen name="DeathReportSent" component={DeathReportSentScreen} />
+      <Stack.Screen name="DeathReportList" component={DeathReportListScreen} />
       <Stack.Screen name="NicForm" component={NicFormScreen} />
+      <Stack.Screen name="NicFormContact" component={NicFormContactScreen} />
+      <Stack.Screen name="NicFormDocuments" component={NicFormDocumentsScreen} />
+      <Stack.Screen name="NicFormDeclaration" component={NicFormDeclarationScreen} />
+      <Stack.Screen name="NicFormReceipt" component={NicFormReceiptScreen} />
       <Stack.Screen name="AdminDashboard" component={AdminTabs} />
       <Stack.Screen name="MarriageCertificateList" component={MarriageCertificateListScreen} />
       <Stack.Screen
