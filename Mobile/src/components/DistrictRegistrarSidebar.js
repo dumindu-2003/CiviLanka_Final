@@ -9,10 +9,16 @@ const MENU_ITEMS = [
   { key: "home", label: "Dashboard", icon: "home-outline", target: "Home" },
   {
     key: "new-birth",
-    label: "New Birth Registration",
+    label: "New Birth Application",
     icon: "add-circle-outline",
-    target: "NewDistrictRegistration",
-    params: { kind: "birth" },
+    target: "NewBirthApplication",
+  },
+  {
+    key: "birth-applications",
+    label: "Birth Applications",
+    icon: "list-outline",
+    target: "DistrictBirthApplications",
+    params: { status: "open" },
   },
   {
     key: "birth",

@@ -9,6 +9,7 @@ const nicFormRoutes = require("./routes/nicFormRoutes");
 const deathReportRoutes = require("./routes/deathReportRoutes");
 const marriageRegistrationRoutes = require("./routes/marriageRegistrationRoutes");
 const identityRoutes = require("./routes/identityRoutes");
+const birthApplicationRoutes = require("./routes/birthApplicationRoutes");
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ app.use("/api/nic-forms", nicFormRoutes);
 app.use("/api/death-reports", deathReportRoutes);
 app.use("/api/marriage-registrations", marriageRegistrationRoutes);
 app.use("/api/identity", identityRoutes);
+app.use("/api/birth-applications", birthApplicationRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

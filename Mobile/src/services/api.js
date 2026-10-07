@@ -273,6 +273,35 @@ export async function approveDeathReport(id) {
   }
 }
 
+export async function getBirthApplications() {
+  try {
+    const response = await apiClient.get("/birth-applications");
+    return response.data.applications || [];
+  } catch (error) {
+    throw readApiError(error, "Could not load birth applications.");
+  }
+}
+
+export async function createBirthApplication(details) {
+  try {
+    const response = await apiClient.post("/birth-applications", details);
+    return response.data.application;
+  } catch (error) {
+    const apiError = readApiError(error, "Could not create the birth application.");
+    apiError.fields = error.response?.data?.errors;
+    throw apiError;
+  }
+}
+
+export async function updateBirthApplicationStatus(id, status) {
+  try {
+    const response = await apiClient.patch(`/birth-applications/${id}/status`, { status });
+    return response.data.application;
+  } catch (error) {
+    throw readApiError(error, "Could not update the birth application status.");
+  }
+}
+
 export async function submitMarriageRegistration(details) {
   try {
     const response = await apiClient.post("/marriage-registrations", details);
