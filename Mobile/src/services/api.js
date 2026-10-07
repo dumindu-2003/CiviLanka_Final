@@ -2,6 +2,7 @@ import axios from "axios";
 import { NativeModules } from "react-native";
 import getDevServer from "react-native/Libraries/Core/Devtools/getDevServer";
 import * as SecureStore from "expo-secure-store";
+import { PUBLIC_API_URL } from "../constants/publicApiUrl";
 
 function hostFromUrl(url) {
   if (typeof url !== "string") {
@@ -12,9 +13,16 @@ function hostFromUrl(url) {
   return match?.[1] || null;
 }
 
-// The phone must call this computer, not localhost. The address follows the
-// computer that served the Expo bundle, so a hotspot IP change does not break login.
-function apiBaseUrl() {
+function publishedApiUrl() {
+  const value = String(PUBLIC_API_URL || "").trim().replace(/\/$/, "");
+  if (!value) {
+    return null;
+  }
+
+  return value.endsWith("/api") ? value : `${value}/api`;
+}
+
+function lanApiUrl() {
   const devServerUrl = (() => {
     try {
       return getDevServer()?.url;
@@ -25,11 +33,24 @@ function apiBaseUrl() {
   const host =
     hostFromUrl(NativeModules?.SourceCode?.scriptURL) || hostFromUrl(devServerUrl);
 
-  if (host && host !== "localhost" && host !== "127.0.0.1") {
-    return `http://${host}:5000/api`;
+  if (
+    !host ||
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host.endsWith(".exp.direct") ||
+    host.endsWith(".loca.lt") ||
+    host.endsWith(".trycloudflare.com")
+  ) {
+    return null;
   }
 
-  return "http://172.20.10.5:5000/api";
+  return `http://${host}:5000/api`;
+}
+
+// Same Wi-Fi or hotspot uses the computer directly. A public address is only
+// used when the phone did not load the app from this computer's own IP.
+function apiBaseUrl() {
+  return lanApiUrl() || publishedApiUrl() || "";
 }
 
 export const API_BASE_URL = apiBaseUrl();
@@ -38,11 +59,35 @@ const TOKEN_KEY = "civilanka_token";
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  timeout: 20000,
   headers: {
     Accept: "application/json",
+    "Bypass-Tunnel-Reminder": "true",
   },
 });
+
+apiClient.interceptors.request.use((config) => {
+  if (!config.__triedPublic) {
+    config.baseURL = apiBaseUrl();
+  }
+  return config;
+});
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const config = error.config;
+    const published = publishedApiUrl();
+    const current = config?.baseURL;
+    if (!config || config.__triedPublic || error.response || !published || published === current) {
+      return Promise.reject(error);
+    }
+
+    config.__triedPublic = true;
+    config.baseURL = published;
+    return apiClient.request(config);
+  }
+);
 
 export async function saveAuthToken(token) {
   await SecureStore.setItemAsync(TOKEN_KEY, token);
