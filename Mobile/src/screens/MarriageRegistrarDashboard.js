@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { COLORS } from "../constants/colors";
-import { clearAuthToken } from "../services/api";
+import { clearAuthToken, getMyMarriageRegistrations } from "../services/api";
 import RegistrarSidebar from "../components/RegistrarSidebar";
 import {
   MARRIAGE_REGISTRATIONS,
@@ -13,6 +14,31 @@ import {
 
 export default function MarriageRegistrarDashboard({ navigation }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [savedRegistrations, setSavedRegistrations] = useState([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      getMyMarriageRegistrations()
+        .then((items) => {
+          if (active) {
+            setSavedRegistrations(items);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setSavedRegistrations([]);
+          }
+        });
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
+
+  const recent = savedRegistrations.length
+    ? savedRegistrations.slice(0, 2)
+    : MARRIAGE_REGISTRATIONS;
 
   return (
     <View style={styles.screen}>
@@ -20,7 +46,7 @@ export default function MarriageRegistrarDashboard({ navigation }) {
       <RegistrarSidebar
         visible={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
-        onNavigate={(target) => navigation.navigate(target)}
+        onNavigate={(target, params) => navigation.navigate(target, params)}
         onLogout={async () => {
           await clearAuthToken();
           const rootNavigation = navigation.getParent()?.getParent() ?? navigation.getParent();
@@ -71,7 +97,7 @@ export default function MarriageRegistrarDashboard({ navigation }) {
 
         <Pressable
           style={styles.primaryButton}
-          onPress={() => navigation.navigate("NewMarriageRegistration")}
+          onPress={() => navigation.navigate("NewMarriageRegistration", { fresh: Date.now() })}
           accessibilityRole="button"
         >
           <Ionicons name="add" size={18} color={COLORS.WHITE} />
@@ -90,14 +116,14 @@ export default function MarriageRegistrarDashboard({ navigation }) {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Registrations</Text>
           <View style={styles.metaPill}>
-            <Text style={styles.sectionMeta}>Showing 2 latest</Text>
+            <Text style={styles.sectionMeta}>Showing {Math.min(recent.length, 2)} latest</Text>
           </View>
         </View>
 
-        {MARRIAGE_REGISTRATIONS.map((item) => (
+        {recent.map((item) => (
           <View key={item.id} style={styles.recordCard}>
             <View style={styles.recordTop}>
-              <Text style={styles.recordId}>{item.id}</Text>
+              <Text style={styles.recordId}>{item.registrationReference || item.id}</Text>
               <View
                 style={[
                   styles.status,
@@ -122,7 +148,10 @@ export default function MarriageRegistrarDashboard({ navigation }) {
             <Pressable
               style={styles.viewButton}
               onPress={() =>
-                navigation.navigate("MarriageRegistrationDetail", { registrationId: item.id })
+                navigation.navigate(
+                  "MarriageRegistrationDetail",
+                  item.groomName ? { registration: item } : { registrationId: item.id }
+                )
               }
               accessibilityRole="button"
             >

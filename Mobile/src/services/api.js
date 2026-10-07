@@ -213,6 +213,35 @@ export async function approveDeathReport(id) {
   }
 }
 
+export async function submitMarriageRegistration(details) {
+  try {
+    const response = await apiClient.post("/marriage-registrations", details);
+    return response.data.registration;
+  } catch (error) {
+    const apiError = readApiError(error, "Could not send the marriage registration.");
+    apiError.fields = error.response?.data?.errors;
+    throw apiError;
+  }
+}
+
+export async function getMyMarriageRegistrations() {
+  try {
+    const response = await apiClient.get("/marriage-registrations");
+    return response.data.registrations || [];
+  } catch (error) {
+    throw readApiError(error, "Could not load marriage certificates.");
+  }
+}
+
+export async function getIncomingMarriageRegistrations() {
+  try {
+    const response = await apiClient.get("/marriage-registrations/incoming");
+    return response.data.registrations || [];
+  } catch (error) {
+    throw readApiError(error, "Could not load marriage registrations.");
+  }
+}
+
 export async function getMyDeathReports() {
   try {
     const response = await apiClient.get("/death-reports");
