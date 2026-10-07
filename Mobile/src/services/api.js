@@ -1,20 +1,35 @@
 import axios from "axios";
 import { NativeModules } from "react-native";
+import getDevServer from "react-native/Libraries/Core/Devtools/getDevServer";
 import * as SecureStore from "expo-secure-store";
 
+function hostFromUrl(url) {
+  if (typeof url !== "string") {
+    return null;
+  }
+
+  const match = url.match(/https?:\/\/([^:/]+)/);
+  return match?.[1] || null;
+}
+
 // The phone must call this computer, not localhost. The address follows the
-// computer that served the Expo bundle, so a Wi-Fi IP change does not break login.
+// computer that served the Expo bundle, so a hotspot IP change does not break login.
 function apiBaseUrl() {
-  const scriptURL = NativeModules?.SourceCode?.scriptURL;
-  const match =
-    typeof scriptURL === "string" ? scriptURL.match(/https?:\/\/([^:/]+)/) : null;
-  const host = match?.[1];
+  const devServerUrl = (() => {
+    try {
+      return getDevServer()?.url;
+    } catch {
+      return null;
+    }
+  })();
+  const host =
+    hostFromUrl(NativeModules?.SourceCode?.scriptURL) || hostFromUrl(devServerUrl);
 
   if (host && host !== "localhost" && host !== "127.0.0.1") {
     return `http://${host}:5000/api`;
   }
 
-  return "http://10.55.220.4:5000/api";
+  return "http://172.20.10.5:5000/api";
 }
 
 export const API_BASE_URL = apiBaseUrl();
