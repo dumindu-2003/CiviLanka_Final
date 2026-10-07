@@ -45,7 +45,7 @@ function requireAdmin(req, res, next) {
   if (req.user.role !== "admin") {
     return res.status(403).json({
       success: false,
-      message: "Only an admin can add users.",
+      message: "Only an admin can manage users.",
     });
   }
 

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { File, Paths } from "expo-file-system";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { COLORS } from "../constants/colors";
 import { certificateById, certificateDetailRows, certificateListTitle } from "../constants/villageCertificates";
+import { buildCertificatePdf } from "../services/certificatePdf";
 
 function documentTitle(type) {
   if (type === "birth") {
@@ -21,55 +23,16 @@ function documentTitle(type) {
   return "Certificate";
 }
 
-function escapeHtml(value) {
-  return String(value || "—")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function certificateHtml(certificate, rows) {
-  const title = documentTitle(certificate.type);
-  const details = rows
-    .map(
-      ([label, value]) =>
-        `<tr><td class="label">${escapeHtml(label)}</td><td>${escapeHtml(value)}</td></tr>`
-    )
-    .join("");
-
-  return `<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <style>
-      body { font-family: sans-serif; color: #1E1E1E; margin: 0; }
-      .banner { background: #0A1F44; color: #FFFFFF; padding: 28px 32px 22px; }
-      .accent { height: 6px; background: #F4C430; }
-      .banner p { margin: 0; color: #F4C430; font-size: 12px; letter-spacing: 1px; font-weight: 700; }
-      h1 { margin: 8px 0 0; font-size: 28px; }
-      .sheet { padding: 28px 32px; }
-      .ref { color: #0A1F44; font-size: 18px; font-weight: 700; }
-      .status { display: inline-block; margin-top: 10px; background: #0A1F44; color: #FFFFFF; border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 700; }
-      table { width: 100%; border-collapse: collapse; margin-top: 18px; }
-      td { padding: 10px 0; border-bottom: 1px solid #DFE1E4; font-size: 15px; vertical-align: top; }
-      .label { width: 180px; color: #6B7280; font-size: 12px; font-weight: 700; }
-      .foot { margin-top: 28px; color: #6B7280; font-size: 12px; }
-    </style>
-  </head>
-  <body>
-    <div class="banner">
-      <p>CIVILANKA</p>
-      <h1>${escapeHtml(title)}</h1>
-    </div>
-    <div class="accent"></div>
-    <div class="sheet">
-      <div class="ref">${escapeHtml(certificate.ref)}</div>
-      <div class="status">Approved</div>
-      <table>${details}</table>
-      <p class="foot">Issued for the Grama Niladhari division. This copy can be saved or printed.</p>
-    </div>
-  </body>
-</html>`;
+function saveCertificateFile(certificate, rows) {
+  const pdf = buildCertificatePdf(documentTitle(certificate.type), certificate.ref, rows);
+  const safeName = `${String(certificate.ref || "certificate").replace(/[^\w.-]/g, "_")}.pdf`;
+  const file = new File(Paths.cache, safeName);
+  if (file.exists) {
+    file.delete();
+  }
+  file.create();
+  file.write(pdf);
+  return file.uri;
 }
 
 export default function VillageCertificateDetailScreen({ navigation, route }) {
@@ -79,9 +42,8 @@ export default function VillageCertificateDetailScreen({ navigation, route }) {
   const [isWorking, setIsWorking] = useState(false);
   const [notice, setNotice] = useState("");
 
-  async function createPdf() {
-    const html = certificateHtml(certificate, rows);
-    return Print.printToFileAsync({ html });
+  function createPdfUri() {
+    return saveCertificateFile(certificate, rows);
   }
 
   async function handleDownload() {
@@ -91,13 +53,13 @@ export default function VillageCertificateDetailScreen({ navigation, route }) {
     setIsWorking(true);
     setNotice("");
     try {
-      const file = await createPdf();
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {
         setNotice("Download is not available on this device.");
         return;
       }
-      await Sharing.shareAsync(file.uri, {
+      const uri = createPdfUri();
+      await Sharing.shareAsync(uri, {
         mimeType: "application/pdf",
         UTI: "com.adobe.pdf",
         dialogTitle: `Download ${certificate.ref}`,
@@ -118,7 +80,8 @@ export default function VillageCertificateDetailScreen({ navigation, route }) {
     setIsWorking(true);
     setNotice("");
     try {
-      await Print.printAsync({ html: certificateHtml(certificate, rows) });
+      const uri = createPdfUri();
+      await Print.printAsync({ uri });
     } catch (error) {
       if (!/cancel/i.test(String(error?.message || ""))) {
         setNotice("Could not open the print dialog.");

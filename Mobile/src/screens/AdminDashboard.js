@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,7 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { COLORS } from "../constants/colors";
 import { roleLabel, STAFF_ROLES } from "../constants/roles";
-import { clearAuthToken, createUser, getUsers } from "../services/api";
+import { clearAuthToken, createUser, deleteUser, getCurrentUser, getUsers, updateUser } from "../services/api";
 import AdminSidebar from "../components/AdminSidebar";
 
 const EMPTY_FORM = {
@@ -27,9 +28,42 @@ const EMPTY_FORM = {
   role: "village_officer",
 };
 
+function validateStaffForm(form, editing) {
+  const errors = {};
+  const email = form.email.trim().toLowerCase();
+  const username = form.username.trim().toLowerCase();
+  const serviceNumber = form.serviceNumber.trim().toUpperCase();
+  const password = form.password.trim();
+
+  if (!/^[A-Za-z][A-Za-z .'-]{1,}$/.test(form.name.trim())) {
+    errors.name = "Enter a valid full name.";
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errors.email = "Enter a valid email address.";
+  }
+  if (!/^[a-z]+(\.[a-z]+)+$/.test(username)) {
+    errors.username = "Username must look like j.perera.";
+  }
+  if (!/^[A-Z]{2,}-\d{3,}$/.test(serviceNumber)) {
+    errors.serviceNumber = "Service number must look like VO-100101.";
+  }
+  if (!editing && password.length < 6) {
+    errors.password = "Password must be at least 6 characters.";
+  } else if (editing && password && password.length < 6) {
+    errors.password = "Password must be at least 6 characters.";
+  }
+  if (!STAFF_ROLES.some((role) => role.value === form.role)) {
+    errors.role = "Choose a staff role.";
+  }
+  return errors;
+}
+
 export default function AdminDashboard({ navigation }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [editingId, setEditingId] = useState("");
+  const [currentUserId, setCurrentUserId] = useState("");
   const [users, setUsers] = useState([]);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -45,8 +79,9 @@ export default function AdminDashboard({ navigation }) {
 
   const loadUsers = useCallback(async () => {
     try {
-      const accounts = await getUsers();
+      const [accounts, currentUser] = await Promise.all([getUsers(), getCurrentUser()]);
       setUsers(accounts);
+      setCurrentUserId(String(currentUser.id));
     } catch (loadError) {
       setError(loadError.message);
     }
@@ -60,43 +95,101 @@ export default function AdminDashboard({ navigation }) {
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
+    setFieldErrors((current) => ({ ...current, [field]: "" }));
     setError("");
     setMessage("");
   }
 
-  async function handleAddUser() {
-    const name = form.name.trim();
-    const email = form.email.trim();
-    const username = form.username.trim();
-    const serviceNumber = form.serviceNumber.trim().toUpperCase();
-    const password = form.password.trim();
+  function resetForm() {
+    setForm(EMPTY_FORM);
+    setFieldErrors({});
+    setEditingId("");
+    setError("");
+  }
 
-    if (!name || !email || !username || !serviceNumber || !password) {
-      setError("Fill in name, email, username, service number, and password.");
+  function startEdit(account) {
+    setEditingId(account.id);
+    setForm({
+      name: account.name || "",
+      email: account.email || "",
+      username: account.username || "",
+      serviceNumber: account.serviceNumber || "",
+      password: "",
+      role: account.role,
+    });
+    setFieldErrors({});
+    setError("");
+    setMessage("");
+  }
+
+  async function handleSaveUser() {
+    const nextErrors = validateStaffForm(form, Boolean(editingId));
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      setError("Check the highlighted fields.");
+      setMessage("");
       return;
     }
+
+    const account = {
+      name: form.name.trim(),
+      email: form.email.trim().toLowerCase(),
+      username: form.username.trim().toLowerCase(),
+      serviceNumber: form.serviceNumber.trim().toUpperCase(),
+      password: form.password.trim(),
+      role: form.role,
+    };
 
     setIsSaving(true);
     setError("");
     setMessage("");
 
     try {
-      await createUser({
-        name,
-        email,
-        username,
-        serviceNumber,
-        password,
-        role: form.role,
-      });
-      setForm(EMPTY_FORM);
-      setMessage("User added.");
+      if (editingId) {
+        await updateUser(editingId, account);
+        setMessage("User updated.");
+      } else {
+        await createUser(account);
+        setMessage("User added.");
+      }
+      resetForm();
       await loadUsers();
     } catch (saveError) {
+      if (saveError.fields) {
+        setFieldErrors(saveError.fields);
+      }
       setError(saveError.message);
     } finally {
       setIsSaving(false);
     }
+  }
+
+  function handleDelete(account) {
+    if (String(account.id) === currentUserId) {
+      setError("You cannot delete the account you are signed in with.");
+      return;
+    }
+    Alert.alert("Delete user", `Delete ${account.name}?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          setError("");
+          setMessage("");
+          try {
+            await deleteUser(account.id);
+            if (editingId === account.id) {
+              resetForm();
+            }
+            setMessage("User deleted.");
+            await loadUsers();
+          } catch (deleteError) {
+            setError(deleteError.message);
+          }
+        },
+      },
+    ]);
   }
 
   async function handleLogout() {
@@ -169,7 +262,7 @@ export default function AdminDashboard({ navigation }) {
               <View style={styles.iconCircle}>
                 <Ionicons name="person-add-outline" size={16} color={COLORS.PRIMARY_NAVY} />
               </View>
-              <Text style={styles.cardTitle}>Add user</Text>
+              <Text style={styles.cardTitle}>{editingId ? "Update user" : "Add user"}</Text>
             </View>
             <Text style={styles.label}>Name</Text>
             <TextInput
@@ -177,8 +270,9 @@ export default function AdminDashboard({ navigation }) {
               onChangeText={(value) => updateField("name", value)}
               placeholder="Full name"
               placeholderTextColor={COLORS.MUTED_TEXT}
-              style={styles.input}
+              style={[styles.input, fieldErrors.name && styles.inputError]}
             />
+            <FieldError message={fieldErrors.name} />
             <Text style={styles.label}>Email</Text>
             <TextInput
               value={form.email}
@@ -187,8 +281,9 @@ export default function AdminDashboard({ navigation }) {
               placeholderTextColor={COLORS.MUTED_TEXT}
               autoCapitalize="none"
               keyboardType="email-address"
-              style={styles.input}
+              style={[styles.input, fieldErrors.email && styles.inputError]}
             />
+            <FieldError message={fieldErrors.email} />
             <Text style={styles.label}>Government Username</Text>
             <TextInput
               value={form.username}
@@ -196,8 +291,9 @@ export default function AdminDashboard({ navigation }) {
               placeholder="j.perera"
               placeholderTextColor={COLORS.MUTED_TEXT}
               autoCapitalize="none"
-              style={styles.input}
+              style={[styles.input, fieldErrors.username && styles.inputError]}
             />
+            <FieldError message={fieldErrors.username} />
             <Text style={styles.label}>Service No</Text>
             <TextInput
               value={form.serviceNumber}
@@ -205,17 +301,19 @@ export default function AdminDashboard({ navigation }) {
               placeholder="VO-100200"
               placeholderTextColor={COLORS.MUTED_TEXT}
               autoCapitalize="characters"
-              style={styles.input}
+              style={[styles.input, fieldErrors.serviceNumber && styles.inputError]}
             />
+            <FieldError message={fieldErrors.serviceNumber} />
             <Text style={styles.label}>Password</Text>
             <TextInput
               value={form.password}
               onChangeText={(value) => updateField("password", value)}
-              placeholder="At least 6 characters"
+              placeholder={editingId ? "Leave blank to keep the current password" : "At least 6 characters"}
               placeholderTextColor={COLORS.MUTED_TEXT}
               secureTextEntry
-              style={styles.input}
+              style={[styles.input, fieldErrors.password && styles.inputError]}
             />
+            <FieldError message={fieldErrors.password} />
             <Text style={styles.label}>Role</Text>
             <View style={styles.roles}>
               {STAFF_ROLES.map((role) => {
@@ -234,16 +332,24 @@ export default function AdminDashboard({ navigation }) {
                 );
               })}
             </View>
+            <FieldError message={fieldErrors.role} />
             {error ? <Text style={styles.error}>{error}</Text> : null}
             {message ? <Text style={styles.success}>{message}</Text> : null}
             <Pressable
               style={[styles.button, isSaving && styles.buttonBusy]}
-              onPress={handleAddUser}
+              onPress={handleSaveUser}
               disabled={isSaving}
               accessibilityRole="button"
             >
-              <Text style={styles.buttonText}>{isSaving ? "Adding..." : "Add user"}</Text>
+              <Text style={styles.buttonText}>
+                {isSaving ? "Saving..." : editingId ? "Update user" : "Add user"}
+              </Text>
             </Pressable>
+            {editingId ? (
+              <Pressable style={styles.cancelButton} onPress={resetForm} accessibilityRole="button">
+                <Text style={styles.cancelText}>Cancel</Text>
+              </Pressable>
+            ) : null}
           </View>
 
           <View style={styles.sectionHeader}>
@@ -257,17 +363,39 @@ export default function AdminDashboard({ navigation }) {
 
           {users.map((account) => (
             <View key={account.id} style={styles.userCard}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="person-outline" size={16} color={COLORS.PRIMARY_NAVY} />
-              </View>
-              <View style={styles.userCopy}>
-                <Text style={styles.userName}>{account.name}</Text>
-                <Text style={styles.userMeta}>
-                  {account.username} · {account.serviceNumber}
-                </Text>
-                <View style={styles.rolePill}>
-                  <Text style={styles.rolePillText}>{roleLabel(account.role)}</Text>
+              <View style={styles.userTop}>
+                <View style={styles.iconCircle}>
+                  <Ionicons name="person-outline" size={16} color={COLORS.PRIMARY_NAVY} />
                 </View>
+                <View style={styles.userCopy}>
+                  <Text style={styles.userName}>{account.name}</Text>
+                  <Text style={styles.userMeta}>
+                    {account.username} · {account.serviceNumber}
+                  </Text>
+                  <View style={styles.rolePill}>
+                    <Text style={styles.rolePillText}>{roleLabel(account.role)}</Text>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.userActions}>
+                <Pressable
+                  style={styles.editButton}
+                  onPress={() => startEdit(account)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Update ${account.name}`}
+                >
+                  <Ionicons name="create-outline" size={16} color={COLORS.PRIMARY_NAVY} />
+                  <Text style={styles.editText}>Update</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.deleteButton}
+                  onPress={() => handleDelete(account)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete ${account.name}`}
+                >
+                  <Ionicons name="trash-outline" size={16} color={COLORS.WHITE} />
+                  <Text style={styles.deleteText}>Delete</Text>
+                </Pressable>
               </View>
             </View>
           ))}
@@ -275,6 +403,13 @@ export default function AdminDashboard({ navigation }) {
       </KeyboardAvoidingView>
     </View>
   );
+}
+
+function FieldError({ message }) {
+  if (!message) {
+    return null;
+  }
+  return <Text style={styles.fieldError}>{message}</Text>;
 }
 
 const styles = StyleSheet.create({
@@ -417,6 +552,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.BACKGROUND,
     fontSize: 15,
   },
+  inputError: {
+    borderColor: COLORS.PRIMARY_NAVY,
+  },
+  fieldError: {
+    marginTop: 4,
+    color: COLORS.PRIMARY_NAVY,
+    fontSize: 12,
+    fontWeight: "600",
+  },
   roles: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -470,6 +614,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
   },
+  cancelButton: {
+    marginTop: 10,
+    minHeight: 46,
+    borderRadius: 12,
+    backgroundColor: COLORS.ACCENT_YELLOW,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelText: {
+    color: COLORS.PRIMARY_NAVY,
+    fontSize: 15,
+    fontWeight: "700",
+  },
   sectionHeader: {
     marginTop: 22,
     marginBottom: 12,
@@ -502,9 +659,46 @@ const styles = StyleSheet.create({
     borderColor: COLORS.LIGHT_BORDER,
     padding: 14,
     marginBottom: 12,
+    gap: 12,
+  },
+  userTop: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+  },
+  userActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  editButton: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 10,
+    backgroundColor: COLORS.ACCENT_YELLOW,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  editText: {
+    color: COLORS.PRIMARY_NAVY,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  deleteButton: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 10,
+    backgroundColor: COLORS.PRIMARY_NAVY,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  deleteText: {
+    color: COLORS.WHITE,
+    fontSize: 14,
+    fontWeight: "700",
   },
   userCopy: {
     flex: 1,
