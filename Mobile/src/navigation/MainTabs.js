@@ -4,6 +4,7 @@ import Ionicons from "@react-native-vector-icons/ionicons";
 import { COLORS } from "../constants/colors";
 import HomeScreen from "../screens/HomeScreen";
 import PlaceholderScreen from "../screens/PlaceholderScreen";
+import VillageNewsScreen from "../screens/VillageNewsScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -31,15 +32,7 @@ export default function MainTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen
-        name="News"
-        component={PlaceholderScreen}
-        initialParams={{
-          title: "News",
-          message:
-            "Official service updates will appear here in a later development stage.",
-        }}
-      />
+      <Tab.Screen name="News" component={VillageNewsScreen} />
       <Tab.Screen
         name="Notification"
         component={PlaceholderScreen}

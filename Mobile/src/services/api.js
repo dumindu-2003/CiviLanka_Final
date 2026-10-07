@@ -273,6 +273,28 @@ export async function updateUser(id, account) {
   }
 }
 
+export async function getBankCertificates(type) {
+  try {
+    const response = await apiClient.get("/identity/certificates", {
+      params: { type },
+    });
+    return response.data.certificates || [];
+  } catch (error) {
+    throw readApiError(error, "Could not load certificates.");
+  }
+}
+
+export async function verifyIdentity(number) {
+  try {
+    const response = await apiClient.get("/identity/verify", {
+      params: { q: number },
+    });
+    return response.data.match || null;
+  } catch (error) {
+    throw readApiError(error, "Could not verify this number.");
+  }
+}
+
 export async function deleteUser(id) {
   try {
     await apiClient.delete(`/users/${id}`);

@@ -5,6 +5,9 @@ import LoginScreen from "../screens/LoginScreen";
 import MainTabs from "./MainTabs";
 import MarriageRegistrarTabs from "./MarriageRegistrarTabs";
 import BankOfficerTabs from "./BankOfficerTabs";
+import BankVerificationDetailScreen from "../screens/BankVerificationDetailScreen";
+import BankCertificateListScreen from "../screens/BankCertificateListScreen";
+import BankCertificateDetailScreen from "../screens/BankCertificateDetailScreen";
 import VillageOfficerTabs from "./VillageOfficerTabs";
 import DistrictRegistrarTabs from "./DistrictRegistrarTabs";
 import DistrictCertificateListScreen from "../screens/DistrictCertificateListScreen";
@@ -47,6 +50,9 @@ export default function AppNavigator() {
       <Stack.Screen name="Main" component={MainTabs} />
       <Stack.Screen name="MarriageRegistrar" component={MarriageRegistrarTabs} />
       <Stack.Screen name="BankOfficer" component={BankOfficerTabs} />
+      <Stack.Screen name="BankVerificationDetail" component={BankVerificationDetailScreen} />
+      <Stack.Screen name="BankCertificateList" component={BankCertificateListScreen} />
+      <Stack.Screen name="BankCertificateDetail" component={BankCertificateDetailScreen} />
       <Stack.Screen name="VillageOfficer" component={VillageOfficerTabs} />
       <Stack.Screen name="DistrictRegistrar" component={DistrictRegistrarTabs} />
       <Stack.Screen name="DistrictCertificateList" component={DistrictCertificateListScreen} />

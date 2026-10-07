@@ -5,27 +5,7 @@ import { COLORS } from "../constants/colors";
 import DistrictRegistrarDashboard from "../screens/DistrictRegistrarDashboard";
 import StaffProfileScreen from "../screens/StaffProfileScreen";
 import StaffUpdatesScreen from "../screens/StaffUpdatesScreen";
-
-const DISTRICT_NEWS = [
-  {
-    id: "news-marriage",
-    date: "7 Oct 2026",
-    title: "Marriage registrations",
-    body: "Marriage registrars can send completed registrations to this office for review.",
-  },
-  {
-    id: "news-nic",
-    date: "2 Oct 2026",
-    title: "NIC applications",
-    body: "Pending NIC applications from village officers are listed under NIC Applications.",
-  },
-  {
-    id: "news-death",
-    date: "20 Sep 2026",
-    title: "Death reports",
-    body: "Death reports stay editable by the village officer until this office approves them.",
-  },
-];
+import VillageNewsScreen from "../screens/VillageNewsScreen";
 
 const DISTRICT_NOTIFICATIONS = [
   {
@@ -79,16 +59,7 @@ export default function DistrictRegistrarTabs() {
       })}
     >
       <Tab.Screen name="Home" component={DistrictRegistrarDashboard} />
-      <Tab.Screen
-        name="News"
-        component={StaffUpdatesScreen}
-        initialParams={{
-          title: "News",
-          kind: "news",
-          intro: "Updates for the District Registrar.",
-          items: DISTRICT_NEWS,
-        }}
-      />
+      <Tab.Screen name="News" component={VillageNewsScreen} />
       <Tab.Screen
         name="Notification"
         component={StaffUpdatesScreen}

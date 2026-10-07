@@ -8,6 +8,27 @@ import Logo from "./Logo";
 
 const MENU_ITEMS = [
   { key: "home", label: "Dashboard", icon: "home-outline", target: "Home" },
+  {
+    key: "birth",
+    label: "Birth Certificates",
+    icon: "document-text-outline",
+    target: "BankCertificateList",
+    params: { certificateType: "birth" },
+  },
+  {
+    key: "death",
+    label: "Death Certificates",
+    icon: "document-text-outline",
+    target: "BankCertificateList",
+    params: { certificateType: "death" },
+  },
+  {
+    key: "marriage",
+    label: "Marriage Certificates",
+    icon: "heart-outline",
+    target: "BankCertificateList",
+    params: { certificateType: "marriage" },
+  },
   { key: "news", label: "News", icon: "newspaper-outline", target: "News" },
   {
     key: "notification",
@@ -66,11 +87,11 @@ export default function BankOfficerSidebar({ visible, onClose, onNavigate, onLog
     });
   }
 
-  function openItem(target) {
+  function openItem(item) {
     animateClose(() => {
       onClose();
-      if (target !== "Home") {
-        onNavigate(target);
+      if (item.target !== "Home") {
+        onNavigate(item.target, item.params);
       }
     });
   }
@@ -108,7 +129,7 @@ export default function BankOfficerSidebar({ visible, onClose, onNavigate, onLog
                 <Pressable
                   key={item.key}
                   style={styles.menuItem}
-                  onPress={() => openItem(item.target)}
+                  onPress={() => openItem(item)}
                   accessibilityRole="button"
                   accessibilityLabel={item.label}
                 >
