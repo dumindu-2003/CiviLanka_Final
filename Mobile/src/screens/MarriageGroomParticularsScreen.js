@@ -1,19 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { COLORS } from "../constants/colors";
 import {
   MARRIAGE_NATIONALITIES,
   MARRIAGE_RELIGIONS,
   patchMarriageForm,
   setApplicantIsGroom,
-  validateApplicantStep,
+  validateGroomStep,
 } from "../constants/marriageRegistrationForm";
-import {
-  beginFreshMarriageDraft,
-  readMarriageDraft,
-  saveMarriageDraft,
-} from "../services/marriageRegistrationDraft";
+import { readMarriageDraft, saveMarriageDraft } from "../services/marriageRegistrationDraft";
 import MarriageFormLayout, {
   DateField,
   FormInput,
@@ -22,25 +16,20 @@ import MarriageFormLayout, {
   OptionField,
   PrimaryButton,
   ReadOnlyValue,
-  MaritalStatusField,
+  SecondaryButton,
+  StatusChoices,
 } from "../components/MarriageFormLayout";
 
-export default function NewMarriageRegistrationScreen({ navigation, route }) {
+export default function MarriageGroomParticularsScreen({ navigation }) {
   const [form, setForm] = useState(readMarriageDraft);
   const [errors, setErrors] = useState({});
   const [notice, setNotice] = useState("");
   const scrollRef = useRef(null);
 
-  useEffect(() => {
-    setErrors({});
-    setNotice("");
-  }, [route.params?.fresh]);
-
   useFocusEffect(
     useCallback(() => {
-      beginFreshMarriageDraft(route.params?.fresh);
       setForm(readMarriageDraft());
-    }, [route.params?.fresh])
+    }, [])
   );
 
   function updateField(field, value) {
@@ -54,7 +43,7 @@ export default function NewMarriageRegistrationScreen({ navigation, route }) {
   }
 
   function goNext() {
-    const nextErrors = validateApplicantStep(form);
+    const nextErrors = validateGroomStep(form);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
       setNotice("Check the highlighted fields.");
@@ -65,26 +54,30 @@ export default function NewMarriageRegistrationScreen({ navigation, route }) {
     navigation.navigate("MarriageBrideSolemnization");
   }
 
+  function saveDraft() {
+    saveMarriageDraft(form);
+    setNotice("Draft saved.");
+  }
+
   return (
     <MarriageFormLayout
-      title="Applicant & Groom"
-      step={1}
-      stepLabel="Step 1 of 3: Applicant & Groom"
+      title="Groom Particulars"
+      step={2}
+      stepLabel="Step 2 of 4: Groom Particulars"
       notice={notice}
-      onBack={() => navigation.goBack()}
+      onBack={() => {
+        saveMarriageDraft(form);
+        navigation.goBack();
+      }}
       scrollRef={scrollRef}
-      footer={<PrimaryButton label="Next: Bride's Details" onPress={goNext} />}
+      footer={
+        <>
+          <PrimaryButton label="Next: Bride & Solemnization Details" onPress={goNext} />
+          <SecondaryButton label="Save as Draft" onPress={saveDraft} />
+        </>
+      }
     >
-      <FormSection icon="document-text-outline" title="Registration Registry">
-        <ReadOnlyValue label="Certificate Type" value="Marriage Certificate (General / Civil)" />
-      </FormSection>
-
-      <FormSection
-        icon="person-outline"
-        title="Applicant's Details"
-        badge="LOCKED"
-        hint="Party visiting the office and registering."
-      >
+      <FormSection icon="person-outline" title="Applicant's Personal Details">
         <GroomToggle
           value={form.applicantIsGroom}
           onChange={(value) => {
@@ -97,41 +90,28 @@ export default function NewMarriageRegistrationScreen({ navigation, route }) {
           }}
         />
         <FormInput
-          label="Full Legal Name"
+          label="Full Name"
           value={form.applicantName}
           onChangeText={(value) => updateField("applicantName", value)}
           error={errors.applicantName}
           placeholder="Kavinda Ravishan Jayasuriya"
         />
         <FormInput
-          label="NIC Number"
+          label="NIC Number / National Identity Card"
           value={form.applicantNic}
           onChangeText={(value) => updateField("applicantNic", value)}
           error={errors.applicantNic}
           placeholder="199012401924"
         />
-        <FormInput
-          label="Mobile Number"
-          value={form.applicantMobile}
-          onChangeText={(value) => updateField("applicantMobile", value)}
-          error={errors.applicantMobile}
-          placeholder="+94 77 987 1023"
-          keyboardType="phone-pad"
-        />
-        <FormInput
-          label="Residential Address"
-          value={form.applicantAddress}
-          onChangeText={(value) => updateField("applicantAddress", value)}
-          error={errors.applicantAddress}
-          placeholder="18/B, Circular Road, Nawala, Rajagiriya"
+        <DateField
+          label="Applicant Date of Birth"
+          value={form.applicantDob}
+          error={errors.applicantDob}
+          onChange={(value) => updateField("applicantDob", value)}
         />
       </FormSection>
 
-      <FormSection
-        icon="man-outline"
-        title="Groom's Details"
-        hint="Party subject to legal registration."
-      >
+      <FormSection icon="shield-checkmark-outline" title="Groom's Particulars" badge="VERIFY">
         <FormInput
           label="Full Legal Name"
           value={form.groomName}
@@ -140,7 +120,7 @@ export default function NewMarriageRegistrationScreen({ navigation, route }) {
           placeholder="Kavinda Ravishan Jayasuriya"
         />
         <FormInput
-          label="Male NIC Number"
+          label="Male NIC Number / National Identity Card"
           value={form.groomNic}
           onChangeText={(value) => updateField("groomNic", value)}
           error={errors.groomNic}
@@ -165,7 +145,7 @@ export default function NewMarriageRegistrationScreen({ navigation, route }) {
           value={form.groomAddress}
           onChangeText={(value) => updateField("groomAddress", value)}
           error={errors.groomAddress}
-          placeholder="18/B, Circular Road, Nawala, Rajagiriya"
+          placeholder="No. 18/B, Circular Road, Nawala, Rajagiriya"
         />
         <OptionField
           label="Religion / Faith"
@@ -183,37 +163,12 @@ export default function NewMarriageRegistrationScreen({ navigation, route }) {
           onChange={(value) => updateField("groomNationality", value)}
           placeholder="Select nationality"
         />
-        <MaritalStatusField
-          value={form.groomMaritalStatus}
-          error={errors.groomMaritalStatus}
-          onChange={(value) => updateField("groomMaritalStatus", value)}
+        <StatusChoices
+          value={form.groomStatus}
+          error={errors.groomStatus}
+          onChange={(value) => updateField("groomStatus", value)}
         />
       </FormSection>
-
-      <View style={styles.note}>
-        <Text style={styles.noteText}>
-          All parties are cross-verified against the National Registration Database upon final
-          submission.
-        </Text>
-      </View>
     </MarriageFormLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  note: {
-    marginTop: 14,
-    backgroundColor: COLORS.WHITE,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.LIGHT_BORDER,
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.ACCENT_YELLOW,
-    padding: 12,
-  },
-  noteText: {
-    color: COLORS.MUTED_TEXT,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-});

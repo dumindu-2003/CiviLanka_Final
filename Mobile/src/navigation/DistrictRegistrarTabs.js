@@ -3,8 +3,50 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { COLORS } from "../constants/colors";
 import DistrictRegistrarDashboard from "../screens/DistrictRegistrarDashboard";
-import PlaceholderScreen from "../screens/PlaceholderScreen";
 import StaffProfileScreen from "../screens/StaffProfileScreen";
+import StaffUpdatesScreen from "../screens/StaffUpdatesScreen";
+
+const DISTRICT_NEWS = [
+  {
+    id: "news-marriage",
+    date: "7 Oct 2026",
+    title: "Marriage registrations",
+    body: "Marriage registrars can send completed registrations to this office for review.",
+  },
+  {
+    id: "news-nic",
+    date: "2 Oct 2026",
+    title: "NIC applications",
+    body: "Pending NIC applications from village officers are listed under NIC Applications.",
+  },
+  {
+    id: "news-death",
+    date: "20 Sep 2026",
+    title: "Death reports",
+    body: "Death reports stay editable by the village officer until this office approves them.",
+  },
+];
+
+const DISTRICT_NOTIFICATIONS = [
+  {
+    id: "note-marriage",
+    title: "New marriage registration",
+    body: "Open Marriage Registrations in the sidebar to review a submitted form.",
+    time: "Today",
+  },
+  {
+    id: "note-nic",
+    title: "NIC application waiting",
+    body: "A village officer submitted an NIC application for approval.",
+    time: "2 Oct 2026",
+  },
+  {
+    id: "note-death",
+    title: "Death report received",
+    body: "A death report is waiting in Death Reports.",
+    time: "28 Aug 2026",
+  },
+];
 
 const Tab = createBottomTabNavigator();
 
@@ -39,18 +81,22 @@ export default function DistrictRegistrarTabs() {
       <Tab.Screen name="Home" component={DistrictRegistrarDashboard} />
       <Tab.Screen
         name="News"
-        component={PlaceholderScreen}
+        component={StaffUpdatesScreen}
         initialParams={{
           title: "News",
-          message: "Official service updates will appear here in a later development stage.",
+          kind: "news",
+          intro: "Updates for the District Registrar.",
+          items: DISTRICT_NEWS,
         }}
       />
       <Tab.Screen
         name="Notification"
-        component={PlaceholderScreen}
+        component={StaffUpdatesScreen}
         initialParams={{
           title: "Notification",
-          message: "Notifications are not available yet.",
+          kind: "notification",
+          intro: "Tap a notification to mark it as read.",
+          items: DISTRICT_NOTIFICATIONS,
         }}
       />
       <Tab.Screen name="Profile" component={StaffProfileScreen} />

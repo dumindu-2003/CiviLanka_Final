@@ -31,11 +31,16 @@ const MENU_ITEMS = [
 ];
 
 export default function RegistrarSidebar({ visible, onClose, onNavigate, onLogout }) {
-  function openItem(target) {
+  function openItem(item) {
     onClose();
-    if (target !== "Home") {
-      onNavigate(target);
+    if (item.target === "Home") {
+      return;
     }
+    if (item.key === "new") {
+      onNavigate(item.target, { fresh: Date.now() });
+      return;
+    }
+    onNavigate(item.target);
   }
 
   function handleLogout() {
@@ -68,7 +73,7 @@ export default function RegistrarSidebar({ visible, onClose, onNavigate, onLogou
               <Pressable
                 key={item.key}
                 style={styles.menuItem}
-                onPress={() => openItem(item.target)}
+                onPress={() => openItem(item)}
                 accessibilityRole="button"
                 accessibilityLabel={item.label}
               >

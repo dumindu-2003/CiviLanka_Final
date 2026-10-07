@@ -27,6 +27,11 @@ import NicFormReceiptScreen from "../screens/NicFormReceiptScreen";
 import MarriageCertificateListScreen from "../screens/MarriageCertificateListScreen";
 import MarriageRegistrationDetailScreen from "../screens/MarriageRegistrationDetailScreen";
 import NewMarriageRegistrationScreen from "../screens/NewMarriageRegistrationScreen";
+import DistrictMarriageRegistrationsScreen from "../screens/DistrictMarriageRegistrationsScreen";
+import MarriageGroomParticularsScreen from "../screens/MarriageGroomParticularsScreen";
+import MarriageBrideScreen from "../screens/MarriageBrideScreen";
+import MarriageWitnessScreen from "../screens/MarriageWitnessScreen";
+import MarriageRegistrationSentScreen from "../screens/MarriageRegistrationSentScreen";
 import AdminTabs from "./AdminTabs";
 import SettingsScreen from "../screens/SettingsScreen";
 import PrivacyPolicyScreen from "../screens/PrivacyPolicyScreen";
@@ -68,6 +73,14 @@ export default function AppNavigator() {
         component={MarriageRegistrationDetailScreen}
       />
       <Stack.Screen name="NewMarriageRegistration" component={NewMarriageRegistrationScreen} />
+      <Stack.Screen
+        name="DistrictMarriageRegistrations"
+        component={DistrictMarriageRegistrationsScreen}
+      />
+      <Stack.Screen name="MarriageGroomParticulars" component={MarriageGroomParticularsScreen} />
+      <Stack.Screen name="MarriageBrideSolemnization" component={MarriageBrideScreen} />
+      <Stack.Screen name="MarriageWitnessSignOff" component={MarriageWitnessScreen} />
+      <Stack.Screen name="MarriageRegistrationSent" component={MarriageRegistrationSentScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
     </Stack.Navigator>

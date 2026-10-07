@@ -47,6 +47,12 @@ const MENU_ITEMS = [
     icon: "list-outline",
     target: "DistrictDeathReports",
   },
+  {
+    key: "marriage-registrations",
+    label: "Marriage Registrations",
+    icon: "heart-outline",
+    target: "DistrictMarriageRegistrations",
+  },
   { key: "news", label: "News", icon: "newspaper-outline", target: "News" },
   {
     key: "notification",
