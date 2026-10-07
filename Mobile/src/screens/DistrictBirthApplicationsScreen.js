@@ -4,8 +4,11 @@ import { useFocusEffect } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import { COLORS } from "../constants/colors";
 import { getBirthApplications } from "../services/api";
+import { buildBirthCertificateHtml } from "../services/birthCertificatePdf";
 
 const FILTERS = [
   { key: "open", label: "Open" },
@@ -18,12 +21,17 @@ export default function DistrictBirthApplicationsScreen({ navigation, route }) {
   const [statusFilter, setStatusFilter] = useState(route.params?.status || "open");
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const [downloadingId, setDownloadingId] = useState("");
+  const [downloadError, setDownloadError] = useState("");
+  const approvedOnly = route.params?.approvedOnly === true;
 
   useEffect(() => {
-    if (FILTERS.some((filter) => filter.key === route.params?.status)) {
+    if (approvedOnly) {
+      setStatusFilter("approved");
+    } else if (FILTERS.some((filter) => filter.key === route.params?.status)) {
       setStatusFilter(route.params.status);
     }
-  }, [route.params?.status]);
+  }, [approvedOnly, route.params?.status]);
 
   useFocusEffect(
     useCallback(() => {
@@ -52,7 +60,39 @@ export default function DistrictBirthApplicationsScreen({ navigation, route }) {
     }, [])
   );
 
-  const filtered = applications.filter((application) => application.statusCode === statusFilter);
+  const filtered = applications.filter((application) =>
+    application.statusCode === (approvedOnly ? "approved" : statusFilter)
+  );
+
+  async function downloadCertificate(application) {
+    if (application.statusCode !== "approved" || downloadingId) {
+      return;
+    }
+    setDownloadingId(application.id);
+    setDownloadError("");
+    try {
+      if (!(await Sharing.isAvailableAsync())) {
+        setDownloadError("PDF sharing is not available on this device.");
+        return;
+      }
+      const pdf = await Print.printToFileAsync({
+        html: buildBirthCertificateHtml(application),
+        width: 595,
+        height: 842,
+      });
+      await Sharing.shareAsync(pdf.uri, {
+        mimeType: "application/pdf",
+        UTI: "com.adobe.pdf",
+        dialogTitle: `Download birth certificate ${application.applicationReference}`,
+      });
+    } catch (error) {
+      if (!/cancel/i.test(String(error?.message || ""))) {
+        setDownloadError(error.message || "Could not create the birth certificate PDF.");
+      }
+    } finally {
+      setDownloadingId("");
+    }
+  }
 
   return (
     <View style={styles.screen}>
@@ -62,47 +102,70 @@ export default function DistrictBirthApplicationsScreen({ navigation, route }) {
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton} accessibilityLabel="Go back">
             <Ionicons name="chevron-back" size={28} color={COLORS.WHITE} />
           </Pressable>
-          <Text style={styles.headerTitle}>Birth Applications</Text>
-          <Pressable
-            onPress={() => navigation.navigate("NewBirthApplication")}
-            style={styles.addButton}
-            accessibilityLabel="Create birth application"
-          >
-            <Ionicons name="add" size={25} color={COLORS.WHITE} />
-          </Pressable>
+          <Text style={styles.headerTitle}>
+            {approvedOnly ? "Approved Birth Certificates" : "Birth Applications"}
+          </Text>
+          {approvedOnly ? (
+            <View style={styles.addButton} />
+          ) : (
+            <Pressable
+              onPress={() => navigation.navigate("NewBirthApplication")}
+              style={styles.addButton}
+              accessibilityLabel="Create birth application"
+            >
+              <Ionicons name="add" size={25} color={COLORS.WHITE} />
+            </Pressable>
+          )}
         </SafeAreaView>
         <View style={styles.headerAccent} />
       </View>
 
-      <View style={styles.filterWrap}>
-        <View style={styles.filterRow}>
-          {FILTERS.map((filter) => (
-            <Pressable
-              key={filter.key}
-              style={[styles.filterButton, statusFilter === filter.key && styles.filterButtonActive]}
-              onPress={() => setStatusFilter(filter.key)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: statusFilter === filter.key }}
-            >
-              <Text style={[styles.filterText, statusFilter === filter.key && styles.filterTextActive]}>
-                {filter.label}
-              </Text>
-              <Text style={[styles.filterCount, statusFilter === filter.key && styles.filterTextActive]}>
-                {applications.filter((item) => item.statusCode === filter.key).length}
-              </Text>
-            </Pressable>
-          ))}
+      {!approvedOnly ? (
+        <View style={styles.filterWrap}>
+          <View style={styles.filterRow}>
+            {FILTERS.map((filter) => (
+              <Pressable
+                key={filter.key}
+                style={[styles.filterButton, statusFilter === filter.key && styles.filterButtonActive]}
+                onPress={() => setStatusFilter(filter.key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: statusFilter === filter.key }}
+              >
+                <Text style={[styles.filterText, statusFilter === filter.key && styles.filterTextActive]}>
+                  {filter.label}
+                </Text>
+                <Text style={[styles.filterCount, statusFilter === filter.key && styles.filterTextActive]}>
+                  {applications.filter((item) => item.statusCode === filter.key).length}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
-      </View>
+      ) : null}
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {approvedOnly ? (
+          <View style={styles.approvedIntro}>
+            <Ionicons name="shield-checkmark-outline" size={20} color="#22643B" />
+            <Text style={styles.approvedIntroText}>
+              Only approved applications are listed. Download creates a separate PDF for each record.
+            </Text>
+          </View>
+        ) : null}
         {isLoading ? <Text style={styles.message}>Loading birth applications...</Text> : null}
         {loadError ? <Text style={styles.error}>{loadError}</Text> : null}
+        {downloadError ? <Text style={styles.error}>{downloadError}</Text> : null}
         {!isLoading && !loadError && filtered.length === 0 ? (
           <View style={styles.emptyCard}>
             <Ionicons name="document-text-outline" size={30} color={COLORS.MUTED_TEXT} />
-            <Text style={styles.emptyTitle}>No {statusFilter} applications</Text>
-            <Text style={styles.emptyText}>Birth applications with this status will appear here.</Text>
+            <Text style={styles.emptyTitle}>
+              {approvedOnly ? "No approved birth applications" : `No ${statusFilter} applications`}
+            </Text>
+            <Text style={styles.emptyText}>
+              {approvedOnly
+                ? "Applications will be available here after the District Registrar approves them."
+                : "Birth applications with this status will appear here."}
+            </Text>
           </View>
         ) : null}
         {filtered.map((application) => (
@@ -110,6 +173,8 @@ export default function DistrictBirthApplicationsScreen({ navigation, route }) {
             key={application.id}
             application={application}
             onView={() => navigation.navigate("DistrictBirthApplicationDetail", { application })}
+            onDownload={approvedOnly ? () => downloadCertificate(application) : undefined}
+            isDownloading={downloadingId === application.id}
           />
         ))}
       </ScrollView>
@@ -117,7 +182,7 @@ export default function DistrictBirthApplicationsScreen({ navigation, route }) {
   );
 }
 
-export function ApplicationCard({ application, onView }) {
+export function ApplicationCard({ application, onView, onDownload, isDownloading = false }) {
   const status = application.statusCode || application.status;
   return (
     <View style={styles.applicationCard}>
@@ -137,6 +202,20 @@ export function ApplicationCard({ application, onView }) {
         <Text style={styles.viewButtonText}>View application</Text>
         <Ionicons name="arrow-forward" size={16} color={COLORS.WHITE} />
       </Pressable>
+      {status === "approved" && onDownload ? (
+        <Pressable
+          style={[styles.downloadButton, isDownloading && styles.downloadButtonDisabled]}
+          onPress={onDownload}
+          disabled={isDownloading}
+          accessibilityRole="button"
+          accessibilityLabel={`Download certificate for ${application.birthName}`}
+        >
+          <Ionicons name="download-outline" size={17} color={COLORS.PRIMARY_NAVY} />
+          <Text style={styles.downloadButtonText}>
+            {isDownloading ? "Preparing PDF..." : "Download certificate PDF"}
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -204,6 +283,16 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { marginTop: 10, color: COLORS.PRIMARY_NAVY, fontSize: 16, fontWeight: "700" },
   emptyText: { marginTop: 5, color: COLORS.MUTED_TEXT, fontSize: 13, textAlign: "center" },
+  approvedIntro: {
+    marginBottom: 13,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: "#EDF7EF",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+  approvedIntroText: { flex: 1, color: "#22643B", fontSize: 12, lineHeight: 18 },
   applicationCard: {
     backgroundColor: COLORS.WHITE,
     borderRadius: 14,
@@ -237,4 +326,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   viewButtonText: { color: COLORS.WHITE, fontSize: 13, fontWeight: "700" },
+  downloadButton: {
+    marginTop: 8,
+    minHeight: 40,
+    backgroundColor: "#FFF4D6",
+    borderWidth: 1,
+    borderColor: "#E6D39A",
+    borderRadius: 9,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  downloadButtonText: { color: COLORS.PRIMARY_NAVY, fontSize: 13, fontWeight: "700" },
+  downloadButtonDisabled: { opacity: 0.65 },
 });

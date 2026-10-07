@@ -172,6 +172,12 @@ export default function DistrictRegistrarDashboard({ navigation, route }) {
             loadError={loadError}
             onCreate={() => navigation.navigate("NewBirthApplication")}
             onViewAll={() => navigation.navigate("DistrictBirthApplications", { status: birthStatus })}
+            onViewApproved={() =>
+              navigation.navigate("DistrictBirthApplications", {
+                status: "approved",
+                approvedOnly: true,
+              })
+            }
             onView={(application) =>
               navigation.navigate("DistrictBirthApplicationDetail", { application })
             }
@@ -204,6 +210,7 @@ function BirthApplications({
   loadError,
   onCreate,
   onViewAll,
+  onViewApproved,
   onView,
 }) {
   const statusOptions = [
@@ -239,6 +246,30 @@ function BirthApplications({
         <Ionicons name="list-outline" size={18} color={COLORS.PRIMARY_NAVY} />
         <Text style={styles.secondaryActionText}>View All Applications</Text>
       </Pressable>
+
+      <View style={styles.certificateSection}>
+        <View style={styles.certificateIcon}>
+          <Ionicons name="ribbon-outline" size={23} color={COLORS.PRIMARY_NAVY} />
+        </View>
+        <View style={styles.certificateCopy}>
+          <Text style={styles.certificateTitle}>Birth Certificates</Text>
+          <Text style={styles.certificateDescription}>
+            View approved records and download an individual certificate as a PDF.
+          </Text>
+          {/* <Text style={styles.certificateCount}>
+            {applications.filter((item) => item.statusCode === "approved").length} approved
+          </Text> */}
+        </View>
+        <Pressable
+          style={styles.certificateButton}
+          onPress={onViewApproved}
+          accessibilityRole="button"
+          accessibilityLabel="View approved birth certificates"
+        >
+          <Text style={styles.certificateButtonText}>Download Certificates</Text>
+          <Ionicons name="arrow-forward" size={16} color={COLORS.WHITE} />
+        </Pressable>
+      </View>
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Latest Applications</Text>
@@ -575,6 +606,60 @@ const styles = StyleSheet.create({
   secondaryActionText: {
     color: COLORS.PRIMARY_NAVY,
     fontSize: 14,
+    fontWeight: "700",
+  },
+  certificateSection: {
+    marginTop: 16,
+    padding: 14,
+    backgroundColor: COLORS.WHITE,
+    borderWidth: 1,
+    borderColor: COLORS.LIGHT_BORDER,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.ACCENT_YELLOW,
+    borderRadius: 13,
+  },
+  certificateIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#FFF4D6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  certificateCopy: {
+    marginTop: 10,
+  },
+  certificateTitle: {
+    color: COLORS.PRIMARY_NAVY,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  certificateDescription: {
+    marginTop: 4,
+    color: COLORS.MUTED_TEXT,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  certificateCount: {
+    marginTop: 8,
+    color: COLORS.PRIMARY_NAVY,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  certificateButton: {
+    marginTop: 12,
+    minHeight: 42,
+    paddingHorizontal: 12,
+    borderRadius: 9,
+    backgroundColor: COLORS.PRIMARY_NAVY,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  certificateButtonText: {
+    color: COLORS.WHITE,
+    fontSize: 13,
     fontWeight: "700",
   },
   birthStatusTabs: {
