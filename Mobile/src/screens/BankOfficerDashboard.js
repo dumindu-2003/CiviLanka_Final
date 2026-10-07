@@ -4,8 +4,9 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { COLORS } from "../constants/colors";
-import { BANK_BRANCH, BANK_VERIFICATIONS } from "../constants/bankVerifications";
-import { clearAuthToken } from "../services/api";
+import { BANK_BRANCH, BANK_VERIFICATIONS, findSampleVerification } from "../constants/bankVerifications";
+import { parseSriLankanNic } from "../constants/nicIdentity";
+import { clearAuthToken, verifyIdentity } from "../services/api";
 import BankOfficerSidebar from "../components/BankOfficerSidebar";
 
 const DEFAULT_RECORD = BANK_VERIFICATIONS[0];
@@ -14,9 +15,36 @@ export default function BankOfficerDashboard({ navigation }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [nic, setNic] = useState(DEFAULT_RECORD.nic);
   const [result, setResult] = useState(DEFAULT_RECORD);
+  const [recent, setRecent] = useState(BANK_VERIFICATIONS);
   const [lookupMessage, setLookupMessage] = useState("");
+  const [isChecking, setIsChecking] = useState(false);
 
-  function handleVerify() {
+  function remember(match) {
+    setLookupMessage("");
+    setResult(match);
+    setRecent((current) => {
+      const rest = current.filter((item) => item.nic !== match.nic);
+      return [match, ...rest];
+    });
+  }
+
+  function openRecord(record) {
+    navigation.navigate("BankVerificationDetail", { record });
+  }
+
+  function openCertificateList(certificateType) {
+    navigation.navigate("BankCertificateList", { certificateType });
+  }
+
+  function openCertificate(certificate) {
+    if (certificate.source === "registry") {
+      navigation.navigate("BankCertificateDetail", { certificate });
+      return;
+    }
+    navigation.navigate("VillageCertificateDetail", { certificateId: certificate.id });
+  }
+
+  async function handleVerify() {
     const value = nic.trim();
     if (value === "") {
       setResult(null);
@@ -24,15 +52,38 @@ export default function BankOfficerDashboard({ navigation }) {
       return;
     }
 
-    const match = BANK_VERIFICATIONS.find((item) => item.nic === value);
-    if (!match) {
-      setResult(null);
-      setLookupMessage("No official Sri Lanka registry match for this number.");
+    const sample = findSampleVerification(value);
+    if (sample) {
+      remember(sample);
       return;
     }
 
+    setIsChecking(true);
     setLookupMessage("");
-    setResult(match);
+    try {
+      const match = await verifyIdentity(value);
+      if (match) {
+        remember(match);
+        return;
+      }
+      const decoded = parseSriLankanNic(value);
+      if (decoded) {
+        remember(decoded);
+        return;
+      }
+      setResult(null);
+      setLookupMessage("This number is not a valid Sri Lankan NIC or a saved certificate.");
+    } catch (error) {
+      const decoded = parseSriLankanNic(value);
+      if (decoded) {
+        remember(decoded);
+        return;
+      }
+      setResult(null);
+      setLookupMessage(error.message);
+    } finally {
+      setIsChecking(false);
+    }
   }
 
   return (
@@ -41,7 +92,7 @@ export default function BankOfficerDashboard({ navigation }) {
       <BankOfficerSidebar
         visible={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
-        onNavigate={(target) => navigation.navigate(target)}
+        onNavigate={(target, params) => navigation.navigate(target, params)}
         onLogout={async () => {
           await clearAuthToken();
           const rootNavigation = navigation.getParent()?.getParent() ?? navigation.getParent();
@@ -88,6 +139,34 @@ export default function BankOfficerDashboard({ navigation }) {
         </View>
 
         <View style={styles.card}>
+          <Text style={styles.cardTitle}>Certificates</Text>
+          <Pressable
+            style={styles.certificateButton}
+            onPress={() => openCertificateList("birth")}
+            accessibilityRole="button"
+          >
+            <Ionicons name="document-text-outline" size={18} color={COLORS.WHITE} />
+            <Text style={styles.certificateButtonText}>View Birth Certificates</Text>
+          </Pressable>
+          <Pressable
+            style={styles.certificateButton}
+            onPress={() => openCertificateList("death")}
+            accessibilityRole="button"
+          >
+            <Ionicons name="document-text-outline" size={18} color={COLORS.WHITE} />
+            <Text style={styles.certificateButtonText}>View Death Certificates</Text>
+          </Pressable>
+          <Pressable
+            style={styles.certificateButton}
+            onPress={() => openCertificateList("marriage")}
+            accessibilityRole="button"
+          >
+            <Ionicons name="heart-outline" size={18} color={COLORS.WHITE} />
+            <Text style={styles.certificateButtonText}>View Marriage Certificates</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={styles.titleRow}>
               <View style={styles.iconCircle}>
@@ -106,12 +185,18 @@ export default function BankOfficerDashboard({ navigation }) {
             onChangeText={setNic}
             placeholder="Enter NIC or certificate number"
             placeholderTextColor={COLORS.MUTED_TEXT}
-            keyboardType="number-pad"
+            autoCapitalize="characters"
+            autoCorrect={false}
             style={styles.input}
             accessibilityLabel="NIC or certificate number"
           />
-          <Pressable style={styles.verifyButton} onPress={handleVerify} accessibilityRole="button">
-            <Text style={styles.verifyButtonText}>VERIFY</Text>
+          <Pressable
+            style={styles.verifyButton}
+            onPress={handleVerify}
+            disabled={isChecking}
+            accessibilityRole="button"
+          >
+            <Text style={styles.verifyButtonText}>{isChecking ? "CHECKING..." : "VERIFY"}</Text>
           </Pressable>
         </View>
 
@@ -123,12 +208,18 @@ export default function BankOfficerDashboard({ navigation }) {
                   <Ionicons name="shield-checkmark-outline" size={16} color={COLORS.PRIMARY_NAVY} />
                 </View>
                 <View style={styles.resultCopy}>
-                  <Text style={styles.cardTitle}>Identity Verified Successfully</Text>
-                  <Text style={styles.resultMeta}>Verified • Official Sri Lanka Registry Match</Text>
+                  <Text style={styles.cardTitle}>
+                    {result.statusLabel === "Valid" || !result.statusLabel
+                      ? "Identity Verified Successfully"
+                      : "Registry record found"}
+                  </Text>
+                  <Text style={styles.resultMeta}>
+                    {result.note || "Verified • Official Sri Lanka Registry Match"}
+                  </Text>
                 </View>
               </View>
               <View style={styles.validPill}>
-                <Text style={styles.validText}>Valid</Text>
+                <Text style={styles.validText}>{result.statusLabel || "Valid"}</Text>
               </View>
             </View>
 
@@ -145,6 +236,12 @@ export default function BankOfficerDashboard({ navigation }) {
                 <View style={styles.detailCell}>
                   <Text style={styles.detailLabel}>DATE OF BIRTH</Text>
                   <Text style={styles.detailValue}>{result.dateOfBirth}</Text>
+                </View>
+              ) : null}
+              {result.gender ? (
+                <View style={styles.detailCell}>
+                  <Text style={styles.detailLabel}>GENDER</Text>
+                  <Text style={styles.detailValue}>{result.gender}</Text>
                 </View>
               ) : null}
               <View style={styles.detailCell}>
@@ -164,6 +261,27 @@ export default function BankOfficerDashboard({ navigation }) {
               )}
               <Text style={styles.footerText}>{result.verifiedAt}</Text>
             </View>
+            <Pressable
+              style={styles.detailsButton}
+              onPress={() => openRecord(result)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.detailsButtonText}>View details</Text>
+              <Ionicons name="chevron-forward" size={16} color={COLORS.WHITE} />
+            </Pressable>
+            {(result.certificates || []).map((certificate) => (
+              <Pressable
+                key={certificate.id}
+                style={styles.linkedButton}
+                onPress={() => openCertificate(certificate)}
+                accessibilityRole="button"
+              >
+                <Text style={styles.linkedButtonText}>
+                  View {certificate.type} certificate
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={COLORS.PRIMARY_NAVY} />
+              </Pressable>
+            ))}
           </View>
         ) : null}
 
@@ -176,12 +294,18 @@ export default function BankOfficerDashboard({ navigation }) {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Verifications</Text>
           <View style={styles.metaPill}>
-            <Text style={styles.sectionMeta}>Showing 2 records</Text>
+            <Text style={styles.sectionMeta}>Showing {recent.length} records</Text>
           </View>
         </View>
 
-        {BANK_VERIFICATIONS.map((item) => (
-          <View key={item.nic} style={styles.recordCard}>
+        {recent.map((item) => (
+          <Pressable
+            key={item.nic}
+            style={styles.recordCard}
+            onPress={() => openRecord(item)}
+            accessibilityRole="button"
+            accessibilityLabel={`Open verification for ${item.fullName}`}
+          >
             <View style={styles.recordLeft}>
               <View style={styles.iconCircle}>
                 <Ionicons name="person-outline" size={16} color={COLORS.PRIMARY_NAVY} />
@@ -193,11 +317,12 @@ export default function BankOfficerDashboard({ navigation }) {
             </View>
             <View style={styles.recordRight}>
               <View style={styles.verifiedPill}>
-                <Text style={styles.verifiedText}>Verified</Text>
+                <Text style={styles.verifiedText}>{item.statusLabel || "Verified"}</Text>
               </View>
               <Text style={styles.recordDate}>{item.date}</Text>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.MUTED_TEXT} />
+          </Pressable>
         ))}
       </ScrollView>
     </View>
@@ -437,6 +562,52 @@ const styles = StyleSheet.create({
   footerText: {
     color: COLORS.MUTED_TEXT,
     fontSize: 12,
+  },
+  detailsButton: {
+    marginTop: 14,
+    minHeight: 46,
+    borderRadius: 12,
+    backgroundColor: COLORS.PRIMARY_NAVY,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  detailsButtonText: {
+    color: COLORS.WHITE,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  certificateButton: {
+    marginTop: 10,
+    minHeight: 46,
+    borderRadius: 12,
+    backgroundColor: COLORS.PRIMARY_NAVY,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  certificateButtonText: {
+    color: COLORS.WHITE,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  linkedButton: {
+    marginTop: 10,
+    minHeight: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.LIGHT_BORDER,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  linkedButtonText: {
+    color: COLORS.PRIMARY_NAVY,
+    fontSize: 14,
+    fontWeight: "700",
   },
   noticeCard: {
     marginTop: 14,

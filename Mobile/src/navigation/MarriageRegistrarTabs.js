@@ -5,27 +5,7 @@ import { COLORS } from "../constants/colors";
 import MarriageRegistrarDashboard from "../screens/MarriageRegistrarDashboard";
 import StaffProfileScreen from "../screens/StaffProfileScreen";
 import StaffUpdatesScreen from "../screens/StaffUpdatesScreen";
-
-const MARRIAGE_NEWS = [
-  {
-    id: "news-notice",
-    date: "2 Oct 2026",
-    title: "Marriage notice period",
-    body: "A marriage notice must be completed before the registrar submits the registration to the District Registrar.",
-  },
-  {
-    id: "news-cert",
-    date: "20 Sep 2026",
-    title: "Certificate copies",
-    body: "Submitted marriage registrations appear under View All Marriage Certificates after the form is sent.",
-  },
-  {
-    id: "news-hours",
-    date: "1 Sep 2026",
-    title: "Registrar office hours",
-    body: "Marriage registrations are accepted on working days from 8.30 a.m. to 4.15 p.m.",
-  },
-];
+import VillageNewsScreen from "../screens/VillageNewsScreen";
 
 const MARRIAGE_NOTIFICATIONS = [
   {
@@ -79,16 +59,7 @@ export default function MarriageRegistrarTabs() {
       })}
     >
       <Tab.Screen name="Home" component={MarriageRegistrarDashboard} />
-      <Tab.Screen
-        name="News"
-        component={StaffUpdatesScreen}
-        initialParams={{
-          title: "News",
-          kind: "news",
-          intro: "Updates for marriage registrars.",
-          items: MARRIAGE_NEWS,
-        }}
-      />
+      <Tab.Screen name="News" component={VillageNewsScreen} />
       <Tab.Screen
         name="Notification"
         component={StaffUpdatesScreen}

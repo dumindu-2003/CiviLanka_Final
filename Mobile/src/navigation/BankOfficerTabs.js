@@ -3,8 +3,30 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { COLORS } from "../constants/colors";
 import BankOfficerDashboard from "../screens/BankOfficerDashboard";
-import PlaceholderScreen from "../screens/PlaceholderScreen";
+import VillageNewsScreen from "../screens/VillageNewsScreen";
 import StaffProfileScreen from "../screens/StaffProfileScreen";
+import StaffUpdatesScreen from "../screens/StaffUpdatesScreen";
+
+const BANK_NOTIFICATIONS = [
+  {
+    id: "note-verify",
+    title: "Identity check completed",
+    body: "Saman Perera (NIC 199012345678) matched the national registry.",
+    time: "Today",
+  },
+  {
+    id: "note-branch",
+    title: "Branch 042 access is active",
+    body: "You can verify NIC numbers and certificate numbers from this dashboard.",
+    time: "01 Sep 2026",
+  },
+  {
+    id: "note-record",
+    title: "Death record on file",
+    body: "Certificate DR-2026-1029 is a death record. It should not be treated as a living NIC.",
+    time: "28 Aug 2026",
+  },
+];
 
 const Tab = createBottomTabNavigator();
 
@@ -37,20 +59,15 @@ export default function BankOfficerTabs() {
       })}
     >
       <Tab.Screen name="Home" component={BankOfficerDashboard} />
-      <Tab.Screen
-        name="News"
-        component={PlaceholderScreen}
-        initialParams={{
-          title: "News",
-          message: "Official service updates will appear here in a later development stage.",
-        }}
-      />
+      <Tab.Screen name="News" component={VillageNewsScreen} />
       <Tab.Screen
         name="Notification"
-        component={PlaceholderScreen}
+        component={StaffUpdatesScreen}
         initialParams={{
           title: "Notification",
-          message: "Notifications are not available yet.",
+          kind: "notification",
+          intro: "Tap a notification to mark it as read.",
+          items: BANK_NOTIFICATIONS,
         }}
       />
       <Tab.Screen name="Profile" component={StaffProfileScreen} />
