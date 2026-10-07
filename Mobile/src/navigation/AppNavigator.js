@@ -35,6 +35,9 @@ import MarriageRegistrationSentScreen from "../screens/MarriageRegistrationSentS
 import AdminTabs from "./AdminTabs";
 import SettingsScreen from "../screens/SettingsScreen";
 import PrivacyPolicyScreen from "../screens/PrivacyPolicyScreen";
+import NewBirthApplicationScreen from "../screens/NewBirthApplicationScreen";
+import DistrictBirthApplicationsScreen from "../screens/DistrictBirthApplicationsScreen";
+import DistrictBirthApplicationDetailScreen from "../screens/DistrictBirthApplicationDetailScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -51,6 +54,12 @@ export default function AppNavigator() {
       <Stack.Screen name="DistrictRegistrar" component={DistrictRegistrarTabs} />
       <Stack.Screen name="DistrictCertificateList" component={DistrictCertificateListScreen} />
       <Stack.Screen name="DistrictRegistrationDetail" component={DistrictRegistrationDetailScreen} />
+      <Stack.Screen name="NewBirthApplication" component={NewBirthApplicationScreen} />
+      <Stack.Screen name="DistrictBirthApplications" component={DistrictBirthApplicationsScreen} />
+      <Stack.Screen
+        name="DistrictBirthApplicationDetail"
+        component={DistrictBirthApplicationDetailScreen}
+      />
       <Stack.Screen name="NicApplicationDetail" component={NicApplicationDetailScreen} />
       <Stack.Screen name="DistrictNicApplications" component={DistrictNicApplicationsScreen} />
       <Stack.Screen name="DistrictDeathReports" component={DistrictDeathReportsScreen} />

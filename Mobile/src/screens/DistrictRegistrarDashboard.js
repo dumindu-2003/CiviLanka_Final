@@ -5,24 +5,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { COLORS } from "../constants/colors";
 import {
-  BIRTH_REGISTRATIONS,
-  BIRTH_STATS,
   DEATH_REGISTRATIONS,
   DEATH_STATS,
 } from "../constants/districtRegistrations";
 import { useFocusEffect } from "@react-navigation/native";
-import { clearAuthToken, getNicApplications } from "../services/api";
+import {
+  clearAuthToken,
+  getBirthApplications,
+  getNicApplications,
+} from "../services/api";
 import DistrictRegistrarSidebar from "../components/DistrictRegistrarSidebar";
+import { ApplicationCard } from "./DistrictBirthApplicationsScreen";
 
 const AREAS = {
-  birth: {
-    title: "Welcome, Birth Registrar",
-    subtitle: "Manage birth registrations",
-    stats: BIRTH_STATS,
-    primaryLabel: "New Birth Registration",
-    secondaryLabel: "View All Birth Certificates",
-    records: BIRTH_REGISTRATIONS,
-  },
   death: {
     title: "Welcome, Death Registrar",
     subtitle: "Manage death registrations",
@@ -37,6 +32,8 @@ export default function DistrictRegistrarDashboard({ navigation, route }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [area, setArea] = useState(route.params?.area || "birth");
   const [applications, setApplications] = useState([]);
+  const [birthApplications, setBirthApplications] = useState([]);
+  const [birthStatus, setBirthStatus] = useState("open");
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const selected = AREAS[area];
@@ -49,25 +46,35 @@ export default function DistrictRegistrarDashboard({ navigation, route }) {
 
   useFocusEffect(
     useCallback(() => {
-      if (area !== "nic") {
+      if (area !== "nic" && area !== "birth") {
         return undefined;
       }
 
       let active = true;
       setIsLoading(true);
-      getNicApplications()
+      const loadApplications =
+        area === "birth" ? getBirthApplications : getNicApplications;
+      loadApplications()
         .then((items) => {
           if (!active) {
             return;
           }
-          setApplications(items);
+          if (area === "birth") {
+            setBirthApplications(items);
+          } else {
+            setApplications(items);
+          }
           setLoadError("");
         })
         .catch((error) => {
           if (!active) {
             return;
           }
-          setApplications([]);
+          if (area === "birth") {
+            setBirthApplications([]);
+          } else {
+            setApplications([]);
+          }
           setLoadError(error.message);
         })
         .finally(() => {
@@ -156,6 +163,19 @@ export default function DistrictRegistrarDashboard({ navigation, route }) {
             loadError={loadError}
             onView={(application) => navigation.navigate("NicApplicationDetail", { application })}
           />
+        ) : area === "birth" ? (
+          <BirthApplications
+            applications={birthApplications}
+            status={birthStatus}
+            onStatusChange={setBirthStatus}
+            isLoading={isLoading}
+            loadError={loadError}
+            onCreate={() => navigation.navigate("NewBirthApplication")}
+            onViewAll={() => navigation.navigate("DistrictBirthApplications", { status: birthStatus })}
+            onView={(application) =>
+              navigation.navigate("DistrictBirthApplicationDetail", { application })
+            }
+          />
         ) : (
         <RegistrationSection
           title={selected.title}
@@ -172,6 +192,93 @@ export default function DistrictRegistrarDashboard({ navigation, route }) {
         />
         )}
       </ScrollView>
+    </View>
+  );
+}
+
+function BirthApplications({
+  applications,
+  status,
+  onStatusChange,
+  isLoading,
+  loadError,
+  onCreate,
+  onViewAll,
+  onView,
+}) {
+  const statusOptions = [
+    { key: "open", label: "Open" },
+    { key: "approved", label: "Approved" },
+    { key: "rejected", label: "Rejected" },
+  ];
+  const filtered = applications.filter((item) => item.statusCode === status).slice(0, 5);
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.welcomeCard}>
+        <Text style={styles.welcome}>Birth Applications</Text>
+        <Text style={styles.subtitle}>Create and manage birth registrations</Text>
+      </View>
+
+      <View style={styles.statsRow}>
+        {statusOptions.map((option) => (
+          <View key={option.key} style={styles.statCard}>
+            <Text style={styles.statValue}>
+              {applications.filter((item) => item.statusCode === option.key).length}
+            </Text>
+            <Text style={styles.statLabel}>{option.label}</Text>
+          </View>
+        ))}
+      </View>
+
+      <Pressable style={styles.primaryButton} onPress={onCreate} accessibilityRole="button">
+        <Ionicons name="add" size={18} color={COLORS.WHITE} />
+        <Text style={styles.primaryButtonText}>New Birth Application</Text>
+      </Pressable>
+      <Pressable style={styles.secondaryAction} onPress={onViewAll} accessibilityRole="button">
+        <Ionicons name="list-outline" size={18} color={COLORS.PRIMARY_NAVY} />
+        <Text style={styles.secondaryActionText}>View All Applications</Text>
+      </Pressable>
+
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Latest Applications</Text>
+        <View style={styles.metaPill}>
+          <Text style={styles.sectionMeta}>Latest 5</Text>
+        </View>
+      </View>
+      <View style={styles.birthStatusTabs}>
+        {statusOptions.map((option) => (
+          <Pressable
+            key={option.key}
+            style={[styles.birthStatusTab, status === option.key && styles.birthStatusTabActive]}
+            onPress={() => onStatusChange(option.key)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: status === option.key }}
+          >
+            <Text
+              style={[
+                styles.birthStatusText,
+                status === option.key && styles.birthStatusTextActive,
+              ]}
+            >
+              {option.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {isLoading ? <Text style={styles.emptyText}>Loading birth applications...</Text> : null}
+      {loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}
+      {!isLoading && !loadError && filtered.length === 0 ? (
+        <Text style={styles.emptyText}>No {status} birth applications found.</Text>
+      ) : null}
+      {filtered.map((application) => (
+        <ApplicationCard
+          key={application.id}
+          application={application}
+          onView={() => onView(application)}
+        />
+      ))}
     </View>
   );
 }
@@ -412,6 +519,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  errorText: {
+    marginTop: 16,
+    color: "#B42318",
+    fontSize: 14,
+    lineHeight: 20,
+  },
   welcomeCard: {
     backgroundColor: COLORS.WHITE,
     borderRadius: 14,
@@ -446,6 +559,50 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 14,
     paddingHorizontal: 6,
+  },
+  secondaryAction: {
+    marginTop: 8,
+    minHeight: 46,
+    borderRadius: 12,
+    backgroundColor: COLORS.WHITE,
+    borderWidth: 1,
+    borderColor: COLORS.LIGHT_BORDER,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  secondaryActionText: {
+    color: COLORS.PRIMARY_NAVY,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  birthStatusTabs: {
+    flexDirection: "row",
+    backgroundColor: COLORS.WHITE,
+    borderWidth: 1,
+    borderColor: COLORS.LIGHT_BORDER,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 12,
+  },
+  birthStatusTab: {
+    flex: 1,
+    minHeight: 38,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  birthStatusTabActive: {
+    backgroundColor: COLORS.PRIMARY_NAVY,
+  },
+  birthStatusText: {
+    color: COLORS.PRIMARY_NAVY,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  birthStatusTextActive: {
+    color: COLORS.WHITE,
   },
   statIcon: {
     width: 34,

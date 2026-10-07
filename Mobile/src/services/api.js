@@ -1,20 +1,32 @@
 import axios from "axios";
-import { NativeModules } from "react-native";
+import { NativeModules, Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 
 // The phone must call this computer, not localhost. The address follows the
 // computer that served the Expo bundle, so a Wi-Fi IP change does not break login.
+const FALLBACK_API_URL = "http://172.20.10.3:5000/api";
+
 function apiBaseUrl() {
+  const configuredUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (typeof configuredUrl === "string" && configuredUrl.trim()) {
+    return configuredUrl.trim().replace(/\/+$/, "");
+  }
+
   const scriptURL = NativeModules?.SourceCode?.scriptURL;
-  const match =
-    typeof scriptURL === "string" ? scriptURL.match(/https?:\/\/([^:/]+)/) : null;
+  const match = typeof scriptURL === "string"
+    ? scriptURL.match(/^(?:https?|exp(?:\+[^:]+)?):\/\/([^/:?#]+)/i)
+    : null;
   const host = match?.[1];
 
   if (host && host !== "localhost" && host !== "127.0.0.1") {
     return `http://${host}:5000/api`;
   }
 
-  return "http://10.55.220.4:5000/api";
+  if (host && (host === "localhost" || host === "127.0.0.1")) {
+    return `http://${Platform.OS === "android" ? "10.0.2.2" : host}:5000/api`;
+  }
+
+  return FALLBACK_API_URL;
 }
 
 export const API_BASE_URL = apiBaseUrl();
@@ -210,6 +222,35 @@ export async function approveDeathReport(id) {
     return response.data.report;
   } catch (error) {
     throw readApiError(error, "Could not approve the death report.");
+  }
+}
+
+export async function getBirthApplications() {
+  try {
+    const response = await apiClient.get("/birth-applications");
+    return response.data.applications || [];
+  } catch (error) {
+    throw readApiError(error, "Could not load birth applications.");
+  }
+}
+
+export async function createBirthApplication(details) {
+  try {
+    const response = await apiClient.post("/birth-applications", details);
+    return response.data.application;
+  } catch (error) {
+    const apiError = readApiError(error, "Could not create the birth application.");
+    apiError.fields = error.response?.data?.errors;
+    throw apiError;
+  }
+}
+
+export async function updateBirthApplicationStatus(id, status) {
+  try {
+    const response = await apiClient.patch(`/birth-applications/${id}/status`, { status });
+    return response.data.application;
+  } catch (error) {
+    throw readApiError(error, "Could not update the birth application status.");
   }
 }
 
