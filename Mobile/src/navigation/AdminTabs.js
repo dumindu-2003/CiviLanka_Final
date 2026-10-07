@@ -3,7 +3,8 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { COLORS } from "../constants/colors";
 import AdminDashboard from "../screens/AdminDashboard";
-import PlaceholderScreen from "../screens/PlaceholderScreen";
+import VillageNewsScreen from "../screens/VillageNewsScreen";
+import VillageNotificationScreen from "../screens/VillageNotificationScreen";
 import StaffProfileScreen from "../screens/StaffProfileScreen";
 
 const Tab = createBottomTabNavigator();
@@ -37,22 +38,8 @@ export default function AdminTabs() {
       })}
     >
       <Tab.Screen name="Home" component={AdminDashboard} />
-      <Tab.Screen
-        name="News"
-        component={PlaceholderScreen}
-        initialParams={{
-          title: "News",
-          message: "Official service updates will appear here in a later development stage.",
-        }}
-      />
-      <Tab.Screen
-        name="Notification"
-        component={PlaceholderScreen}
-        initialParams={{
-          title: "Notification",
-          message: "Notifications are not available yet.",
-        }}
-      />
+      <Tab.Screen name="News" component={VillageNewsScreen} />
+      <Tab.Screen name="Notification" component={VillageNotificationScreen} />
       <Tab.Screen name="Profile" component={StaffProfileScreen} />
     </Tab.Navigator>
   );

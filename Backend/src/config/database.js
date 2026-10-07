@@ -1,8 +1,21 @@
+const dns = require("dns");
 const mongoose = require("mongoose");
 const seedAccounts = require("./seedAccounts");
 
+function useWorkingDns() {
+  const servers = dns.getServers();
+  const onlyLocalhost = servers.every(
+    (server) => server === "127.0.0.1" || server === "::1"
+  );
+
+  if (onlyLocalhost) {
+    dns.setServers(["8.8.8.8", "1.1.1.1"]);
+  }
+}
+
 async function connectDatabase() {
   const mongoUri = process.env.MONGODB_URI;
+  useWorkingDns();
 
   if (!mongoUri || mongoUri === "your_mongodb_connection_string") {
     console.error(

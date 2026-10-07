@@ -1,10 +1,23 @@
 import axios from "axios";
+import { NativeModules } from "react-native";
 import * as SecureStore from "expo-secure-store";
 
-// Change this to your computer's IPv4 address before testing on a phone.
-// Do not use localhost. On a physical Android device, localhost means the phone itself.
-// Find the address with: ipconfig
-export const API_BASE_URL = "http://192.168.1.20:5000/api";
+// The phone must call this computer, not localhost. The address follows the
+// computer that served the Expo bundle, so a Wi-Fi IP change does not break login.
+function apiBaseUrl() {
+  const scriptURL = NativeModules?.SourceCode?.scriptURL;
+  const match =
+    typeof scriptURL === "string" ? scriptURL.match(/https?:\/\/([^:/]+)/) : null;
+  const host = match?.[1];
+
+  if (host && host !== "localhost" && host !== "127.0.0.1") {
+    return `http://${host}:5000/api`;
+  }
+
+  return "http://10.55.220.4:5000/api";
+}
+
+export const API_BASE_URL = apiBaseUrl();
 
 const TOKEN_KEY = "civilanka_token";
 
@@ -214,6 +227,27 @@ export async function createUser(account) {
     const response = await apiClient.post("/users", account);
     return response.data.user;
   } catch (error) {
-    throw readApiError(error, "Could not add the user.");
+    const apiError = readApiError(error, "Could not add the user.");
+    apiError.fields = error.response?.data?.errors;
+    throw apiError;
+  }
+}
+
+export async function updateUser(id, account) {
+  try {
+    const response = await apiClient.patch(`/users/${id}`, account);
+    return response.data.user;
+  } catch (error) {
+    const apiError = readApiError(error, "Could not update the user.");
+    apiError.fields = error.response?.data?.errors;
+    throw apiError;
+  }
+}
+
+export async function deleteUser(id) {
+  try {
+    await apiClient.delete(`/users/${id}`);
+  } catch (error) {
+    throw readApiError(error, "Could not delete the user.");
   }
 }
