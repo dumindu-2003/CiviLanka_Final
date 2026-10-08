@@ -54,7 +54,7 @@ export default function DeathReportListScreen({ navigation }) {
           >
             <Ionicons name="chevron-back" size={28} color={COLORS.WHITE} />
           </Pressable>
-          <Text style={styles.headerTitle}>Death Reports</Text>
+          <Text style={styles.headerTitle}>My Death Applications</Text>
           <View style={styles.backButton} />
         </SafeAreaView>
         <View style={styles.headerAccent} />
@@ -64,7 +64,7 @@ export default function DeathReportListScreen({ navigation }) {
         {isLoading ? <Text style={styles.empty}>Loading reports...</Text> : null}
         {loadError ? <Text style={styles.empty}>{loadError}</Text> : null}
         {!isLoading && !loadError && reports.length === 0 ? (
-          <Text style={styles.empty}>No death reports have been sent yet.</Text>
+          <Text style={styles.empty}>No death applications have been created yet.</Text>
         ) : null}
         {reports.map((item) => {
           const approved = item.statusCode === "approved";
@@ -83,7 +83,7 @@ export default function DeathReportListScreen({ navigation }) {
             <View style={[styles.status, approved && styles.statusApproved]}>
               <Text style={[styles.statusText, approved && styles.statusTextApproved]}>{item.status}</Text>
             </View>
-            <Text style={styles.action}>{approved ? "View" : "Edit"}</Text>
+            <Text style={styles.action}>View application</Text>
           </Pressable>
           );
         })}

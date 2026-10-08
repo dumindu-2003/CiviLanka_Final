@@ -190,7 +190,7 @@ export async function submitDeathReport(details) {
     const response = await apiClient.post("/death-reports", details);
     return response.data.report;
   } catch (error) {
-    const apiError = readApiError(error, "Could not send the death report.");
+    const apiError = readApiError(error, "Could not create the death application.");
     apiError.fields = error.response?.data?.errors;
     throw apiError;
   }
@@ -201,7 +201,7 @@ export async function getIncomingDeathReports() {
     const response = await apiClient.get("/death-reports/incoming");
     return response.data.reports || [];
   } catch (error) {
-    throw readApiError(error, "Could not load death reports.");
+    throw readApiError(error, "Could not load death applications.");
   }
 }
 
@@ -210,7 +210,7 @@ export async function updateDeathReport(id, details) {
     const response = await apiClient.patch(`/death-reports/${id}`, details);
     return response.data.report;
   } catch (error) {
-    const apiError = readApiError(error, "Could not update the death report.");
+    const apiError = readApiError(error, "Could not update the death application.");
     apiError.fields = error.response?.data?.errors;
     throw apiError;
   }
@@ -221,7 +221,7 @@ export async function approveDeathReport(id) {
     const response = await apiClient.post(`/death-reports/${id}/approve`);
     return response.data.report;
   } catch (error) {
-    throw readApiError(error, "Could not approve the death report.");
+    throw readApiError(error, "Could not approve the death application.");
   }
 }
 
@@ -288,7 +288,7 @@ export async function getMyDeathReports() {
     const response = await apiClient.get("/death-reports");
     return response.data.reports || [];
   } catch (error) {
-    throw readApiError(error, "Could not load death reports.");
+    throw readApiError(error, "Could not load death applications.");
   }
 }
 

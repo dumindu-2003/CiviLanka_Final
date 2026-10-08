@@ -2,6 +2,7 @@ const DeathReport = require("../models/DeathReport");
 
 const GENDERS = ["Male", "Female", "Other"];
 const RELATIONSHIPS = ["Spouse", "Child", "Parent", "Sibling", "Relative", "Other"];
+const STATUSES = ["open", "approved"];
 
 function isValidName(value) {
   return /^[A-Za-z][A-Za-z .'-]{1,}$/.test(String(value || "").trim());
@@ -79,6 +80,7 @@ function reportErrors(body) {
 
 function publicReport(report) {
   const officer = report.officer && report.officer.name ? report.officer : null;
+  const statusCode = report.status === "approved" ? "approved" : "open";
   return {
     id: report._id,
     reportReference: report.reportReference,
@@ -93,8 +95,8 @@ function publicReport(report) {
     relationship: report.relationship,
     informantPhone: report.informantPhone,
     division: report.division,
-    status: report.status === "approved" ? "Approved" : "Sent to District Registrar",
-    statusCode: report.status === "approved" ? "approved" : "sent_to_district_registrar",
+    status: statusCode === "approved" ? "Approved" : "Open",
+    statusCode,
     officerName: officer ? officer.name : "",
     officerService: officer ? officer.serviceNumber : "",
     submittedAt: report.submittedAt,
@@ -106,7 +108,7 @@ async function createDeathReport(req, res) {
     if (req.user.role !== "village_officer") {
       return res.status(403).json({
         success: false,
-        message: "Only a village officer can report a death.",
+        message: "Only a village officer can create a death application.",
       });
     }
 
@@ -136,21 +138,21 @@ async function createDeathReport(req, res) {
       relationship: String(req.body.relationship).trim(),
       informantPhone: String(req.body.informantPhone).replace(/[\s-]/g, ""),
       division: String(req.body.division).trim(),
-      status: "sent_to_district_registrar",
+      status: "open",
       officer: req.user._id,
       submittedAt: new Date(),
     });
 
     return res.status(201).json({
       success: true,
-      message: "Death report sent to the District Registrar.",
+      message: "Death application sent to the District Registrar.",
       report: publicReport(report),
     });
   } catch (error) {
-    console.error("Could not save death report:", error.message);
+    console.error("Could not save death application:", error.message);
     return res.status(500).json({
       success: false,
-      message: "Could not send the death report.",
+      message: "Could not create the death application.",
     });
   }
 }
@@ -160,7 +162,7 @@ async function listMyDeathReports(req, res) {
     if (req.user.role !== "village_officer") {
       return res.status(403).json({
         success: false,
-        message: "Only a village officer can view these death reports.",
+        message: "Only a village officer can view their death applications.",
       });
     }
 
@@ -170,10 +172,10 @@ async function listMyDeathReports(req, res) {
       reports: reports.map(publicReport),
     });
   } catch (error) {
-    console.error("Could not list death reports:", error.message);
+    console.error("Could not list village death applications:", error.message);
     return res.status(500).json({
       success: false,
-      message: "Could not load death reports.",
+      message: "Could not load death applications.",
     });
   }
 }
@@ -183,7 +185,7 @@ async function listIncomingDeathReports(req, res) {
     if (req.user.role !== "district_registrar") {
       return res.status(403).json({
         success: false,
-        message: "Only a district registrar can review death reports.",
+        message: "Only a district registrar can review death applications.",
       });
     }
 
@@ -196,10 +198,10 @@ async function listIncomingDeathReports(req, res) {
       reports: reports.map(publicReport),
     });
   } catch (error) {
-    console.error("Could not list incoming death reports:", error.message);
+    console.error("Could not list incoming death applications:", error.message);
     return res.status(500).json({
       success: false,
-      message: "Could not load death reports.",
+      message: "Could not load death applications.",
     });
   }
 }
@@ -222,14 +224,18 @@ function savedDetails(body) {
 
 async function updateDeathReport(req, res) {
   try {
-    if (req.user.role !== "village_officer") {
+    if (req.user.role !== "district_registrar") {
       return res.status(403).json({
         success: false,
-        message: "Only a village officer can edit a death report.",
+        message: "Only a district registrar can edit death applications.",
       });
     }
 
     const errors = reportErrors(req.body);
+    const status = String(req.body.status || "").trim().toLowerCase();
+    if (!STATUSES.includes(status)) {
+      errors.status = "Select Open or Approved.";
+    }
     if (Object.keys(errors).length > 0) {
       return res.status(400).json({
         success: false,
@@ -238,21 +244,16 @@ async function updateDeathReport(req, res) {
       });
     }
 
-    const report = await DeathReport.findOne({ _id: req.params.id, officer: req.user._id });
+    const report = await DeathReport.findById(req.params.id).populate("officer", "name serviceNumber");
     if (!report) {
       return res.status(404).json({
         success: false,
-        message: "This death report could not be found.",
+        message: "This death application could not be found.",
       });
     }
-    if (report.status === "approved") {
-      return res.status(403).json({
-        success: false,
-        message: "An approved death report cannot be edited.",
-      });
-    }
-
     Object.assign(report, savedDetails(req.body));
+    report.status = status;
+    report.approvedAt = status === "approved" ? report.approvedAt || new Date() : null;
     await report.save();
 
     return res.status(200).json({
@@ -261,10 +262,16 @@ async function updateDeathReport(req, res) {
       report: publicReport(report),
     });
   } catch (error) {
-    console.error("Could not update death report:", error.message);
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid death application.",
+      });
+    }
+    console.error("Could not update death application:", error.message);
     return res.status(500).json({
       success: false,
-      message: "Could not update the death report.",
+      message: "Could not update the death application.",
     });
   }
 }
@@ -274,7 +281,7 @@ async function approveDeathReport(req, res) {
     if (req.user.role !== "district_registrar") {
       return res.status(403).json({
         success: false,
-        message: "Only a district registrar can approve a death report.",
+        message: "Only a district registrar can approve death applications.",
       });
     }
 
@@ -282,30 +289,23 @@ async function approveDeathReport(req, res) {
     if (!report) {
       return res.status(404).json({
         success: false,
-        message: "This death report could not be found.",
+        message: "This death application could not be found.",
       });
     }
-    if (report.status === "approved") {
-      return res.status(400).json({
-        success: false,
-        message: "This death report is already approved.",
-      });
-    }
-
     report.status = "approved";
-    report.approvedAt = new Date();
+    report.approvedAt = report.approvedAt || new Date();
     await report.save();
 
     return res.status(200).json({
       success: true,
-      message: "Death report approved.",
+      message: "Death application approved.",
       report: publicReport(report),
     });
   } catch (error) {
-    console.error("Could not approve death report:", error.message);
+    console.error("Could not approve death application:", error.message);
     return res.status(500).json({
       success: false,
-      message: "Could not approve the death report.",
+      message: "Could not approve the death application.",
     });
   }
 }

@@ -4,40 +4,25 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { COLORS } from "../constants/colors";
-import {
-  DEATH_REGISTRATIONS,
-  DEATH_STATS,
-} from "../constants/districtRegistrations";
 import { useFocusEffect } from "@react-navigation/native";
 import {
   clearAuthToken,
   getBirthApplications,
+  getIncomingDeathReports,
   getNicApplications,
 } from "../services/api";
 import DistrictRegistrarSidebar from "../components/DistrictRegistrarSidebar";
 import { ApplicationCard } from "./DistrictBirthApplicationsScreen";
-
-const AREAS = {
-  death: {
-    title: "Welcome, Death Registrar",
-    subtitle: "Manage death registrations",
-    stats: DEATH_STATS,
-    primaryLabel: "New Death Registration",
-    secondaryLabel: "View All Death Certificates",
-    records: DEATH_REGISTRATIONS,
-  },
-};
 
 export default function DistrictRegistrarDashboard({ navigation, route }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [area, setArea] = useState(route.params?.area || "birth");
   const [applications, setApplications] = useState([]);
   const [birthApplications, setBirthApplications] = useState([]);
+  const [deathReports, setDeathReports] = useState([]);
   const [birthStatus, setBirthStatus] = useState("open");
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
-  const selected = AREAS[area];
-
   useEffect(() => {
     if (route.params?.area) {
       setArea(route.params.area);
@@ -46,14 +31,18 @@ export default function DistrictRegistrarDashboard({ navigation, route }) {
 
   useFocusEffect(
     useCallback(() => {
-      if (area !== "nic" && area !== "birth") {
+      if (area !== "nic" && area !== "birth" && area !== "death") {
         return undefined;
       }
 
       let active = true;
       setIsLoading(true);
       const loadApplications =
-        area === "birth" ? getBirthApplications : getNicApplications;
+        area === "birth"
+          ? getBirthApplications
+          : area === "death"
+            ? getIncomingDeathReports
+            : getNicApplications;
       loadApplications()
         .then((items) => {
           if (!active) {
@@ -61,6 +50,8 @@ export default function DistrictRegistrarDashboard({ navigation, route }) {
           }
           if (area === "birth") {
             setBirthApplications(items);
+          } else if (area === "death") {
+            setDeathReports(items);
           } else {
             setApplications(items);
           }
@@ -72,6 +63,8 @@ export default function DistrictRegistrarDashboard({ navigation, route }) {
           }
           if (area === "birth") {
             setBirthApplications([]);
+          } else if (area === "death") {
+            setDeathReports([]);
           } else {
             setApplications([]);
           }
@@ -183,19 +176,19 @@ export default function DistrictRegistrarDashboard({ navigation, route }) {
             }
           />
         ) : (
-        <RegistrationSection
-          title={selected.title}
-          subtitle={selected.subtitle}
-          stats={selected.stats}
-          primaryLabel={selected.primaryLabel}
-          secondaryLabel={selected.secondaryLabel}
-          records={selected.records}
-          onPrimary={() => navigation.navigate("NewDistrictRegistration", { kind: area })}
-          onSecondary={() => navigation.navigate("DistrictCertificateList", { kind: area })}
-          onView={(registrationId) =>
-            navigation.navigate("DistrictRegistrationDetail", { registrationId })
-          }
-        />
+          <DeathApplications
+            reports={deathReports}
+            isLoading={isLoading}
+            loadError={loadError}
+            onViewAll={() => navigation.navigate("DistrictDeathReports")}
+            onViewApproved={() =>
+              navigation.navigate("DistrictDeathReports", {
+                status: "approved",
+                approvedOnly: true,
+              })
+            }
+            onView={(report) => navigation.navigate("DistrictDeathReportDetail", { report })}
+          />
         )}
       </ScrollView>
     </View>
@@ -379,84 +372,62 @@ function formatSubmitted(value) {
   return date.toLocaleString();
 }
 
-function RegistrationSection({
-  title,
-  subtitle,
-  stats,
-  primaryLabel,
-  secondaryLabel,
-  records,
-  onPrimary,
-  onSecondary,
-  onView,
-}) {
+function DeathApplications({ reports, isLoading, loadError, onViewAll, onViewApproved, onView }) {
+  const openCount = reports.filter((report) => report.statusCode === "open").length;
+  const approvedCount = reports.filter((report) => report.statusCode === "approved").length;
+
   return (
-    <View style={styles.section}>
-      <View style={styles.welcomeCard}>
-        <Text style={styles.welcome}>{title}</Text>
-        <Text style={styles.subtitle}>{subtitle}</Text>
+    <View style={deathStyles.section}>
+      <View style={deathStyles.welcomeCard}>
+        <Text style={deathStyles.welcome}>Death Applications</Text>
+        <Text style={deathStyles.subtitle}>Review village officer applications, update details and set status.</Text>
       </View>
 
-      <View style={styles.statsRow}>
-        {stats.map((item) => (
-          <View key={item.key} style={styles.statCard}>
-            <View style={styles.statIcon}>
-              <Ionicons name={item.icon} size={18} color={COLORS.PRIMARY_NAVY} />
-            </View>
-            <Text style={styles.statValue}>{item.value}</Text>
-            <Text style={styles.statLabel}>{item.label}</Text>
+      <View style={deathStyles.statsRow}>
+        {[
+          { key: "open", label: "Open", value: openCount },
+          { key: "approved", label: "Approved", value: approvedCount },
+        ].map((item) => (
+          <View key={item.key} style={deathStyles.statCard}>
+            <Text style={deathStyles.statValue}>{item.value}</Text>
+            <Text style={deathStyles.statLabel}>{item.label}</Text>
           </View>
         ))}
       </View>
 
-      <Pressable style={styles.primaryButton} onPress={onPrimary} accessibilityRole="button">
-        <Ionicons name="add" size={18} color={COLORS.WHITE} />
-        <Text style={styles.primaryButtonText}>{primaryLabel}</Text>
+      <Pressable style={deathStyles.primaryButton} onPress={onViewAll} accessibilityRole="button">
+        <Ionicons name="list-outline" size={18} color={COLORS.WHITE} />
+        <Text style={deathStyles.primaryButtonText}>View all death applications</Text>
+      </Pressable>
+      <Pressable style={deathStyles.secondaryButton} onPress={onViewApproved} accessibilityRole="button">
+        <Ionicons name="download-outline" size={18} color={COLORS.PRIMARY_NAVY} />
+        <Text style={deathStyles.secondaryButtonText}>Approved death certificates</Text>
       </Pressable>
 
-      <Pressable style={styles.primaryButton} onPress={onSecondary} accessibilityRole="button">
-        <Ionicons name="document-text-outline" size={18} color={COLORS.WHITE} />
-        <Text style={styles.primaryButtonText}>{secondaryLabel}</Text>
-      </Pressable>
-
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Recent Registrations</Text>
-        <View style={styles.metaPill}>
-          <Text style={styles.sectionMeta}>Showing 2 latest</Text>
+      <View style={deathStyles.sectionHeader}>
+        <Text style={deathStyles.sectionTitle}>Latest applications</Text>
+        <View style={deathStyles.metaPill}>
+          <Text style={deathStyles.sectionMeta}>Latest 5</Text>
         </View>
       </View>
 
-      {records.map((item) => (
-        <View key={item.id} style={styles.recordCard}>
-          <View style={styles.recordTop}>
-            <Text style={styles.recordId}>{item.id}</Text>
-            <View
-              style={[
-                styles.status,
-                item.status === "Approved" ? styles.statusApproved : styles.statusPending,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.statusText,
-                  item.status === "Approved" ? styles.statusTextApproved : styles.statusTextPending,
-                ]}
-              >
-                {item.status}
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.recordName}>{item.name}</Text>
-          <View style={styles.dateRow}>
-            <Ionicons name="calendar-outline" size={14} color={COLORS.MUTED_TEXT} />
-            <Text style={styles.date}>{item.date}</Text>
-          </View>
+      {isLoading ? <Text style={deathStyles.message}>Loading death applications...</Text> : null}
+      {loadError ? <Text style={deathStyles.error}>{loadError}</Text> : null}
+      {!isLoading && !loadError && reports.length === 0 ? (
+        <Text style={deathStyles.message}>No death applications have been submitted yet.</Text>
+      ) : null}
+      {reports.slice(0, 5).map((report) => (
+        <View key={report.id} style={deathStyles.recordCard}>
+          <Text style={deathStyles.reference}>{report.reportReference}</Text>
+          <Text style={deathStyles.recordName}>{report.fullName}</Text>
+          <Text style={deathStyles.meta}>{report.dateOfDeath} · {report.division}</Text>
+          <Text style={deathStyles.status}>{report.status}</Text>
           <Pressable
-            style={styles.viewButton}
-            onPress={() => onView(item.id)}
+            style={deathStyles.viewButton}
+            onPress={() => onView(report)}
             accessibilityRole="button"
           >
-            <Text style={styles.viewButtonText}>View</Text>
+            <Text style={deathStyles.viewButtonText}>View and update</Text>
           </Pressable>
         </View>
       ))}
@@ -820,4 +791,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
+});
+
+const deathStyles = StyleSheet.create({
+  section: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32 },
+  welcomeCard: { backgroundColor: COLORS.PRIMARY_NAVY, borderRadius: 14, padding: 16 },
+  welcome: { color: COLORS.WHITE, fontSize: 20, fontWeight: "700" },
+  subtitle: { marginTop: 5, color: COLORS.WHITE, fontSize: 13, lineHeight: 19, opacity: 0.85 },
+  statsRow: { flexDirection: "row", gap: 10, marginTop: 14 },
+  statCard: {
+    flex: 1,
+    backgroundColor: COLORS.WHITE,
+    borderWidth: 1,
+    borderColor: COLORS.LIGHT_BORDER,
+    borderRadius: 12,
+    padding: 14,
+  },
+  statValue: { color: COLORS.PRIMARY_NAVY, fontSize: 22, fontWeight: "700" },
+  statLabel: { marginTop: 3, color: COLORS.MUTED_TEXT, fontSize: 12, fontWeight: "600" },
+  primaryButton: {
+    marginTop: 12,
+    minHeight: 48,
+    borderRadius: 12,
+    backgroundColor: COLORS.PRIMARY_NAVY,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
+  primaryButtonText: { color: COLORS.WHITE, fontSize: 14, fontWeight: "700" },
+  secondaryButton: {
+    marginTop: 8,
+    minHeight: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.LIGHT_BORDER,
+    backgroundColor: COLORS.WHITE,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
+  secondaryButtonText: { color: COLORS.PRIMARY_NAVY, fontSize: 14, fontWeight: "700" },
+  sectionHeader: { marginTop: 22, marginBottom: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sectionTitle: { color: COLORS.PRIMARY_NAVY, fontSize: 17, fontWeight: "700" },
+  metaPill: { backgroundColor: COLORS.WHITE, borderRadius: 999, borderWidth: 1, borderColor: COLORS.LIGHT_BORDER, paddingHorizontal: 10, paddingVertical: 4 },
+  sectionMeta: { color: COLORS.MUTED_TEXT, fontSize: 12, fontWeight: "600" },
+  message: { marginTop: 8, color: COLORS.MUTED_TEXT, fontSize: 14 },
+  error: { marginTop: 8, color: COLORS.PRIMARY_NAVY, fontSize: 14 },
+  recordCard: { backgroundColor: COLORS.WHITE, borderWidth: 1, borderColor: COLORS.LIGHT_BORDER, borderRadius: 14, padding: 14, marginBottom: 12 },
+  reference: { color: COLORS.PRIMARY_NAVY, fontSize: 12, fontWeight: "700" },
+  recordName: { marginTop: 5, color: COLORS.DARK_TEXT, fontSize: 15, fontWeight: "700" },
+  meta: { marginTop: 4, color: COLORS.MUTED_TEXT, fontSize: 12 },
+  status: { marginTop: 8, color: COLORS.PRIMARY_NAVY, fontSize: 12, fontWeight: "700" },
+  viewButton: { marginTop: 10, minHeight: 40, borderRadius: 9, backgroundColor: COLORS.PRIMARY_NAVY, alignItems: "center", justifyContent: "center" },
+  viewButtonText: { color: COLORS.WHITE, fontSize: 13, fontWeight: "700" },
 });

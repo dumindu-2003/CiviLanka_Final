@@ -37,13 +37,13 @@ const MENU_ITEMS = [
   },
   {
     key: "death-report",
-    label: "Report a Death",
+    label: "Create Death Application",
     icon: "add-circle-outline",
     target: "DeathReport",
   },
   {
     key: "death-reports",
-    label: "Death Reports",
+    label: "My Death Applications",
     icon: "list-outline",
     target: "DeathReportList",
   },

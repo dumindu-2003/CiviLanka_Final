@@ -28,18 +28,11 @@ const MENU_ITEMS = [
     params: { kind: "birth" },
   },
   {
-    key: "new-death",
-    label: "New Death Registration",
-    icon: "add-circle-outline",
-    target: "NewDistrictRegistration",
-    params: { kind: "death" },
-  },
-  {
     key: "death",
-    label: "Death Certificates",
+    label: "Approved Death Certificates",
     icon: "document-text-outline",
-    target: "DistrictCertificateList",
-    params: { kind: "death" },
+    target: "DistrictDeathReports",
+    params: { status: "approved", approvedOnly: true },
   },
   {
     key: "nic",
@@ -49,7 +42,7 @@ const MENU_ITEMS = [
   },
   {
     key: "death-reports",
-    label: "Death Reports",
+    label: "Death Applications",
     icon: "list-outline",
     target: "DistrictDeathReports",
   },

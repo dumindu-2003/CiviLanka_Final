@@ -12,7 +12,7 @@ export default function DeathReportSentScreen({ navigation, route }) {
       <StatusBar style="light" />
       <View style={styles.header}>
         <SafeAreaView edges={["top"]} style={styles.headerSafe}>
-          <Text style={styles.headerTitle}>Death Report</Text>
+          <Text style={styles.headerTitle}>Death Application</Text>
         </SafeAreaView>
         <View style={styles.headerAccent} />
       </View>
@@ -22,17 +22,17 @@ export default function DeathReportSentScreen({ navigation, route }) {
           <View style={styles.heroIcon}>
             <Ionicons name="checkmark" size={28} color={COLORS.PRIMARY_NAVY} />
           </View>
-          <Text style={styles.heroTitle}>Sent to District Registrar</Text>
+          <Text style={styles.heroTitle}>Death application created</Text>
           <Text style={styles.heroBody}>
-            The death details were saved. The District Registrar will review this report and
-            generate the death certificate.
+            The application was sent to the District Registrar. Its default status is Open. A death
+            certificate can only be downloaded after the application is approved.
           </Text>
         </View>
 
         <View style={styles.card}>
           <Text style={styles.reference}>{report.reportReference}</Text>
           <View style={styles.status}>
-            <Text style={styles.statusText}>{report.status || "Sent to District Registrar"}</Text>
+            <Text style={styles.statusText}>{report.status || "Open"}</Text>
           </View>
           <Row label="Deceased" value={report.fullName} />
           <Row label="Date of death" value={report.dateOfDeath} />
@@ -46,7 +46,7 @@ export default function DeathReportSentScreen({ navigation, route }) {
           onPress={() => navigation.navigate("DeathReportList")}
           accessibilityRole="button"
         >
-          <Text style={styles.primaryText}>View death reports</Text>
+          <Text style={styles.primaryText}>View my applications</Text>
         </Pressable>
         <Pressable
           style={styles.secondaryButton}

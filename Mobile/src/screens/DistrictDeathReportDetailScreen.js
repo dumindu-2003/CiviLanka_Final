@@ -1,32 +1,80 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { COLORS } from "../constants/colors";
-import { approveDeathReport } from "../services/api";
+import { DEATH_GENDERS, DEATH_RELATIONSHIPS, validateDeathReport } from "../constants/deathReportOptions";
+import { updateDeathReport } from "../services/api";
+
+const STATUS_OPTIONS = [
+  { key: "open", label: "Open" },
+  { key: "approved", label: "Approved" },
+];
+
+function formFromReport(report) {
+  return {
+    fullName: report?.fullName || "",
+    nic: report?.nic || "",
+    dateOfDeath: report?.dateOfDeath || "",
+    placeOfDeath: report?.placeOfDeath || "",
+    gender: report?.gender || "Male",
+    age: report?.age === 0 || report?.age ? String(report.age) : "",
+    informantName: report?.informantName || "",
+    informantNic: report?.informantNic || "",
+    relationship: report?.relationship || "",
+    informantPhone: report?.informantPhone || "",
+    division: report?.division || "",
+  };
+}
 
 export default function DistrictDeathReportDetailScreen({ navigation, route }) {
   const [report, setReport] = useState(route.params?.report || null);
-  const [isApproving, setIsApproving] = useState(false);
+  const [form, setForm] = useState(() => formFromReport(route.params?.report));
+  const [status, setStatus] = useState(route.params?.report?.statusCode || "open");
+  const [errors, setErrors] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState("");
-  const submitted = formatSubmitted(report?.submittedAt);
-  const isApproved = report?.statusCode === "approved";
 
-  async function handleApprove() {
-    if (!report?.id || isApproved || isApproving) {
+  function updateField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+    setErrors((current) => ({ ...current, [field]: "" }));
+    setNotice("");
+  }
+
+  async function saveApplication() {
+    if (!report?.id || isSaving) {
       return;
     }
-    setIsApproving(true);
+    const nextErrors = validateDeathReport(form);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      setNotice("Check the highlighted fields.");
+      return;
+    }
+
+    setIsSaving(true);
     setNotice("");
     try {
-      const updated = await approveDeathReport(report.id);
+      const updated = await updateDeathReport(report.id, {
+        ...form,
+        nic: form.nic.replace(/\s/g, "").toUpperCase(),
+        informantNic: form.informantNic.replace(/\s/g, "").toUpperCase(),
+        informantPhone: form.informantPhone.replace(/[\s-]/g, ""),
+        age: form.age.trim(),
+        status,
+      });
       setReport(updated);
-      setNotice("Death report approved.");
+      setForm(formFromReport(updated));
+      setStatus(updated.statusCode);
+      setNotice("Death application updated.");
     } catch (error) {
+      if (error.fields) {
+        setErrors(error.fields);
+      }
       setNotice(error.message);
     } finally {
-      setIsApproving(false);
+      setIsSaving(false);
     }
   }
 
@@ -38,77 +86,105 @@ export default function DistrictDeathReportDetailScreen({ navigation, route }) {
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton} accessibilityLabel="Go back">
             <Ionicons name="chevron-back" size={28} color={COLORS.WHITE} />
           </Pressable>
-          <Text style={styles.headerTitle}>Death Report</Text>
+          <Text style={styles.headerTitle}>Death Application</Text>
           <View style={styles.backButton} />
         </SafeAreaView>
         <View style={styles.headerAccent} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {report ? (
-          <View style={styles.card}>
-            <Text style={styles.reference}>{report.reportReference}</Text>
-            <View style={[styles.status, isApproved && styles.statusApproved]}>
-              <Text style={[styles.statusText, isApproved && styles.statusTextApproved]}>{report.status}</Text>
-            </View>
-            <Row label="Full name" value={report.fullName} />
-            <Row label="NIC" value={report.nic || "Not provided"} />
-            <Row label="Date of death" value={report.dateOfDeath} />
-            <Row label="Place of death" value={report.placeOfDeath} />
-            <Row label="Gender" value={report.gender} />
-            <Row label="Age" value={String(report.age ?? "")} />
-            <Row label="Informant" value={report.informantName} />
-            <Row label="Informant NIC" value={report.informantNic} />
-            <Row label="Relationship" value={report.relationship} />
-            <Row label="Phone" value={report.informantPhone} />
-            <Row label="Division" value={report.division} />
-            <Row
-              label="Village officer"
-              value={
-                report.officerName
-                  ? `${report.officerName} (${report.officerService})`
-                  : ""
-              }
-            />
-            <Row label="Submitted" value={submitted} />
-            {isApproved ? null : (
-              <Pressable
-                style={styles.approveButton}
-                onPress={handleApprove}
-                disabled={isApproving}
-                accessibilityRole="button"
-              >
-                <Text style={styles.approveText}>{isApproving ? "Approving..." : "Approve"}</Text>
+          <>
+            <View style={styles.card}>
+              <Text style={styles.reference}>{report.reportReference}</Text>
+              <Text style={styles.sectionTitle}>Application details</Text>
+              <Field label="DECEASED FULL NAME" value={form.fullName} error={errors.fullName} onChangeText={(value) => updateField("fullName", value)} />
+              <Field label="DECEASED NIC" value={form.nic} error={errors.nic} onChangeText={(value) => updateField("nic", value.toUpperCase())} />
+              <Field label="DATE OF DEATH (DD/MM/YYYY)" value={form.dateOfDeath} error={errors.dateOfDeath} onChangeText={(value) => updateField("dateOfDeath", value)} />
+              <Field label="PLACE OF DEATH" value={form.placeOfDeath} error={errors.placeOfDeath} onChangeText={(value) => updateField("placeOfDeath", value)} />
+              <ChoiceField label="GENDER" options={DEATH_GENDERS} value={form.gender} onChange={(value) => updateField("gender", value)} />
+              <Field label="AGE" value={form.age} error={errors.age} keyboardType="number-pad" onChangeText={(value) => updateField("age", value.replace(/\D/g, "").slice(0, 3))} />
+              <Field label="INFORMANT FULL NAME" value={form.informantName} error={errors.informantName} onChangeText={(value) => updateField("informantName", value)} />
+              <Field label="INFORMANT NIC" value={form.informantNic} error={errors.informantNic} onChangeText={(value) => updateField("informantNic", value.toUpperCase())} />
+              <ChoiceField label="RELATIONSHIP" options={DEATH_RELATIONSHIPS} value={form.relationship} onChange={(value) => updateField("relationship", value)} />
+              <Field label="INFORMANT PHONE" value={form.informantPhone} error={errors.informantPhone} keyboardType="phone-pad" onChangeText={(value) => updateField("informantPhone", value)} />
+              <Field label="DIVISION" value={form.division} error={errors.division} onChangeText={(value) => updateField("division", value)} />
+              <Text style={styles.sectionTitle}>Application status</Text>
+              <View style={styles.choices}>
+                {STATUS_OPTIONS.map((option) => (
+                  <Pressable
+                    key={option.key}
+                    style={[styles.choice, status === option.key && styles.choiceActive]}
+                    onPress={() => {
+                      setStatus(option.key);
+                      setNotice("");
+                    }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: status === option.key }}
+                  >
+                    <Text style={[styles.choiceText, status === option.key && styles.choiceTextActive]}>
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              {notice ? <Text style={styles.notice}>{notice}</Text> : null}
+              <Pressable style={styles.saveButton} onPress={saveApplication} disabled={isSaving}>
+                <Text style={styles.saveButtonText}>{isSaving ? "Saving..." : "Save application"}</Text>
               </Pressable>
-            )}
-            {notice ? <Text style={styles.notice}>{notice}</Text> : null}
-          </View>
+              <Text style={styles.submitted}>Submitted: {formatSubmitted(report.submittedAt)}</Text>
+              <Text style={styles.submitted}>Village officer: {report.officerName || "—"}</Text>
+            </View>
+          </>
         ) : (
-          <Text style={styles.missing}>This death report could not be found.</Text>
+          <Text style={styles.notice}>This death application could not be found.</Text>
         )}
       </ScrollView>
     </View>
   );
 }
 
-function Row({ label, value }) {
+function Field({ label, error, ...inputProps }) {
   return (
-    <View style={styles.row}>
+    <View>
       <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value || "—"}</Text>
+      <TextInput
+        placeholderTextColor={COLORS.MUTED_TEXT}
+        style={[styles.input, error && styles.inputError]}
+        {...inputProps}
+      />
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+    </View>
+  );
+}
+
+function ChoiceField({ label, options, value, onChange }) {
+  return (
+    <View>
+      <Text style={styles.label}>{label}</Text>
+      <View style={styles.choices}>
+        {options.map((option) => (
+          <Pressable
+            key={option}
+            style={[styles.choice, value === option && styles.choiceActive]}
+            onPress={() => onChange(option)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: value === option }}
+          >
+            <Text style={[styles.choiceText, value === option && styles.choiceTextActive]}>{option}</Text>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 }
 
 function formatSubmitted(value) {
   if (!value) {
-    return "";
+    return "—";
   }
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-  return date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
 }
 
 const styles = StyleSheet.create({
@@ -130,23 +206,38 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: COLORS.LIGHT_BORDER,
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.ACCENT_YELLOW,
     padding: 16,
   },
-  reference: { color: COLORS.PRIMARY_NAVY, fontSize: 18, fontWeight: "700" },
-  status: {
-    alignSelf: "flex-start",
-    marginTop: 10,
-    backgroundColor: COLORS.ACCENT_YELLOW,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  reference: { color: COLORS.PRIMARY_NAVY, fontSize: 16, fontWeight: "700" },
+  sectionTitle: { marginTop: 18, color: COLORS.PRIMARY_NAVY, fontSize: 16, fontWeight: "700" },
+  label: { marginTop: 12, marginBottom: 6, color: COLORS.MUTED_TEXT, fontSize: 11, fontWeight: "700" },
+  input: {
+    minHeight: 46,
+    borderWidth: 1,
+    borderColor: COLORS.LIGHT_BORDER,
+    borderRadius: 10,
+    backgroundColor: COLORS.WHITE,
+    paddingHorizontal: 12,
+    color: COLORS.DARK_TEXT,
+    fontSize: 15,
   },
-  statusText: { color: COLORS.PRIMARY_NAVY, fontSize: 12, fontWeight: "700" },
-  statusApproved: { backgroundColor: COLORS.PRIMARY_NAVY },
-  statusTextApproved: { color: COLORS.WHITE },
-  approveButton: {
+  inputError: { borderColor: COLORS.PRIMARY_NAVY },
+  error: { marginTop: 4, color: COLORS.PRIMARY_NAVY, fontSize: 12 },
+  choices: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
+  choice: {
+    minHeight: 40,
+    borderWidth: 1,
+    borderColor: COLORS.LIGHT_BORDER,
+    borderRadius: 9,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  choiceActive: { backgroundColor: COLORS.PRIMARY_NAVY, borderColor: COLORS.PRIMARY_NAVY },
+  choiceText: { color: COLORS.PRIMARY_NAVY, fontSize: 13, fontWeight: "700" },
+  choiceTextActive: { color: COLORS.WHITE },
+  notice: { marginTop: 12, color: COLORS.PRIMARY_NAVY, fontSize: 14, fontWeight: "600" },
+  saveButton: {
     marginTop: 18,
     minHeight: 48,
     borderRadius: 12,
@@ -154,10 +245,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  approveText: { color: COLORS.WHITE, fontSize: 15, fontWeight: "700" },
-  notice: { marginTop: 10, color: COLORS.PRIMARY_NAVY, fontSize: 14, fontWeight: "700" },
-  row: { marginTop: 14 },
-  label: { color: COLORS.MUTED_TEXT, fontSize: 12, fontWeight: "700" },
-  value: { marginTop: 2, color: COLORS.DARK_TEXT, fontSize: 15, lineHeight: 21 },
-  missing: { color: COLORS.MUTED_TEXT, fontSize: 15 },
+  saveButtonText: { color: COLORS.WHITE, fontSize: 15, fontWeight: "700" },
+  submitted: { marginTop: 10, color: COLORS.MUTED_TEXT, fontSize: 12 },
 });

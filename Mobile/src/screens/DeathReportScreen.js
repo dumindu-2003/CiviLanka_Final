@@ -20,7 +20,7 @@ import {
   DEATH_RELATIONSHIPS,
   validateDeathReport,
 } from "../constants/deathReportOptions";
-import { submitDeathReport, updateDeathReport } from "../services/api";
+import { submitDeathReport } from "../services/api";
 
 const EMPTY_FORM = {
   fullName: "",
@@ -69,7 +69,7 @@ function formFromReport(report) {
 
 export default function DeathReportScreen({ navigation, route }) {
   const existing = route.params?.report?.id ? route.params.report : null;
-  const isLocked = existing?.statusCode === "approved";
+  const isLocked = Boolean(existing);
   const [form, setForm] = useState(() => (existing ? formFromReport(existing) : EMPTY_FORM));
   const [errors, setErrors] = useState({});
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -125,11 +125,6 @@ export default function DeathReportScreen({ navigation, route }) {
         informantPhone: form.informantPhone.replace(/[\s-]/g, ""),
         age: form.age.trim(),
       };
-      if (existing) {
-        await updateDeathReport(existing.id, payload);
-        navigation.goBack();
-        return;
-      }
       const report = await submitDeathReport(payload);
       navigation.replace("DeathReportSent", { report });
     } catch (error) {
@@ -155,7 +150,7 @@ export default function DeathReportScreen({ navigation, route }) {
             <Ionicons name="chevron-back" size={28} color={COLORS.WHITE} />
           </Pressable>
           <Text style={styles.headerTitle}>
-            {isLocked ? "Death Report" : existing ? "Edit Death Report" : "Report a Death"}
+            {isLocked ? "Death Application" : "Create Death Application"}
           </Text>
           <View style={styles.backButton} />
         </SafeAreaView>
@@ -172,10 +167,8 @@ export default function DeathReportScreen({ navigation, route }) {
           {notice ? <Text style={styles.notice}>{notice}</Text> : null}
           <Text style={styles.hint}>
             {isLocked
-              ? "The District Registrar has approved this report, so it can no longer be edited."
-              : existing
-                ? "You can update this report until the District Registrar approves it."
-                : "Send the death details to the District Registrar. You can edit this report until it is approved."}
+              ? "Village officers can view submitted applications here. Only the District Registrar can update application details and status."
+              : "Create a death application to send it to the District Registrar for review."}
           </Text>
 
           <View pointerEvents={isLocked ? "none" : "auto"}>
@@ -323,7 +316,7 @@ export default function DeathReportScreen({ navigation, route }) {
             accessibilityRole="button"
           >
             <Text style={styles.submitText}>
-              {isSaving ? "Saving..." : existing ? "Save changes" : "Send to District Registrar"}
+              {isSaving ? "Submitting..." : "Send to District Registrar"}
             </Text>
           </Pressable>
           )}

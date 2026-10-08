@@ -63,7 +63,8 @@ const deathReportSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      default: "sent_to_district_registrar",
+      enum: ["open", "approved"],
+      default: "open",
     },
     officer: {
       type: mongoose.Schema.Types.ObjectId,

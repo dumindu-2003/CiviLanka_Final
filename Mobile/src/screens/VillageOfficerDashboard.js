@@ -67,7 +67,7 @@ export default function VillageOfficerDashboard({ navigation }) {
             <Text style={styles.portal}>{VILLAGE_PORTAL}</Text>
           </View>
           <Text style={styles.welcome}>Welcome, Village Officer</Text>
-          <Text style={styles.subtitle}>View certificates and manage NIC forms</Text>
+          <Text style={styles.subtitle}>Create death applications, view your submissions, and manage NIC forms</Text>
 
           {CERTIFICATE_VIEWS.map((item) => (
             <Pressable
@@ -93,7 +93,7 @@ export default function VillageOfficerDashboard({ navigation }) {
           accessibilityRole="button"
         >
           <Ionicons name="add-circle-outline" size={18} color={COLORS.WHITE} />
-          <Text style={styles.reportButtonText}>Report a Death</Text>
+          <Text style={styles.reportButtonText}>Create Death Application</Text>
         </Pressable>
 
         <View style={styles.sectionHeader}>
